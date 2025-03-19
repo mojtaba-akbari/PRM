@@ -19,10 +19,10 @@ int BPF_PROG(hookentry, struct file *file, int mask) {
     bpf_get_current_comm(&comm, sizeof(comm));
 
     // Check if the process name contains "python"
-    if (bpf_strcontains(comm, "python")) {
-        // Deny the write operation
-        return -EPERM; // Operation not permitted
-    }
+    // NOTICE : Do not use Loop even 5*5 because it is too much
+    // Do not use external function , put your function exactlly inline here
+    if(bpf_checkPrefix(comm)) return -EPERM;
+
 
     // if (bpf_strncmp(comm, TASK_COMM_LEN, "python") == 0) {
     //     // Deny the write operation
