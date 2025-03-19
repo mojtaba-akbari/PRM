@@ -4,7 +4,9 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 #include <hookheaders.h>
-#include <hookfunctions.c>
+#include <hookfunctions.h>
+
+char _license[] SEC("license") = "GPL";
 
 // Write ----> STDOUT, File, Pipe //
 SEC("lsm/file_permission")
@@ -30,15 +32,3 @@ int BPF_PROG(hookentry, struct file *file, int mask) {
     // Allow the write operation
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-char _license[] SEC("license") = "GPL";

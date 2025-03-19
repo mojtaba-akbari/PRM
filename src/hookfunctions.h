@@ -1,3 +1,6 @@
+#ifndef BPF_HELPERS_H
+#define BPF_HELPERS_H
+
 // Check if the string contains specific another string or not //
 static __always_inline bool bpf_strcontains(const char *str, const char *substr) {
     int i, j;
@@ -24,3 +27,6 @@ static __always_inline bool bpf_strcontains(const char *str, const char *substr)
     // No match found
     return false;
 }
+
+
+#endif // BPF_HELPERS_H
