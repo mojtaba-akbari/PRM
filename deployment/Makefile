@@ -16,7 +16,7 @@ clean:
 	rm -f package.json hookentry.skel.json hookentry.bpf.o
 
 
-# Add this part to All section to get automated
+# Add this part to All sections get automated
 # cp filtering-syscall-framework.service /etc/systemd/system/
 # systemctl enable filtering-syscall-framework.service
 # systemctl start filtering-syscall-framework.service

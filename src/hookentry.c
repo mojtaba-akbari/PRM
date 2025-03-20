@@ -10,25 +10,57 @@ char _license[] SEC("license") = "GPL";
 
 // Write ----> STDOUT, File, Pipe //
 SEC("lsm/file_permission")
-int BPF_PROG(hookentry, struct file *file, int mask) {
-    // Get the current task (process)
-    struct task_struct *task = (struct task_struct *) bpf_get_current_task();
+int BPF_PROG(hookentry_write, struct file *file, int mask) {
 
-    // Check if the process name is "python"
-    char comm[TASK_COMM_LEN];
-    bpf_get_current_comm(&comm, sizeof(comm));
+    if(bpf_detectHarmfulSyscall()) return -EPERM;
 
-    // Check if the process name contains "python"
-    // NOTICE : Do not use Loop even 5*5 because it is too much
-    // Do not use external function , put your function exactlly inline here
-    if(bpf_checkPrefix(comm)) return -EPERM;
-
-
-    // if (bpf_strncmp(comm, TASK_COMM_LEN, "python") == 0) {
-    //     // Deny the write operation
-    //     return -1; // Operation not permitted
-    // }
-
-    // Allow the write operation
+    // Allow the write operations
     return 0;
 }
+
+// SEC("lsm/bprm_check_security")
+// int BPF_PROG(deny_execve, struct linux_binprm *bprm) {
+//     return -EPERM; // Deny execve
+// }
+
+// // LSM hook for file open
+// SEC("lsm/file_open")
+// int BPF_PROG(deny_open, struct file *file) {
+//     return -EPERM; // Deny open
+// }
+
+// // LSM hook for socket creation
+// SEC("lsm/socket_create")
+// int BPF_PROG(deny_socket, int family, int type, int protocol) {
+//     return -EPERM; // Deny socket
+// }
+
+// // LSM hook for socket connect
+// SEC("lsm/socket_connect")
+// int BPF_PROG(deny_connect, struct socket *sock, struct sockaddr *address, int addrlen) {
+//     return -EPERM; // Deny connect
+// }
+
+// // LSM hook for clone
+// SEC("lsm/task_alloc")
+// int BPF_PROG(deny_clone, struct task_struct *task, unsigned long clone_flags) {
+//     return -EPERM; // Deny clone
+// }
+
+// // LSM hook for fork
+// SEC("lsm/task_fork")
+// int BPF_PROG(deny_fork, struct task_struct *task) {
+//     return -EPERM; // Deny fork
+// }
+
+// // LSM hook for kill
+// SEC("lsm/task_kill")
+// int BPF_PROG(deny_kill, struct task_struct *task, struct kernel_siginfo *info, int sig) {
+//     return -EPERM; // Deny kill
+// }
+
+// // LSM hook for ptrace
+// SEC("lsm/task_ptrace")
+// int BPF_PROG(deny_ptrace, struct task_struct *task, long request) {
+//     return -EPERM; // Deny ptrace
+// }
