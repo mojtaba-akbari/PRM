@@ -12,7 +12,9 @@ static const int PREFIX_NUMBERS=2;
 static __always_inline int my_strlen(const char *s) {
     int len = 0;
 
-    while (s[len] != '\0') len++;
+    while (len < MAX_LEN && s[len] != '\0') {
+        len++;
+    }
 
     return len;
 }

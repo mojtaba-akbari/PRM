@@ -26,3 +26,7 @@
 #ifndef EINVAL
     #define EINVAL 22
 #endif
+
+#ifndef MAX_LEN
+    #define MAX_LEN 256
+#endif
