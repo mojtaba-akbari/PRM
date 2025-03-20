@@ -9,18 +9,30 @@ static const int BASH_PREFIX_LEN = 4;
 
 static const int PREFIX_NUMBERS=2;
 
+static __always_inline int my_strlen(const char *s) {
+    int len = 0;
+
+    while (s[len] != '\0') len++;
+
+    return len;
+}
+
 static __always_inline bool contains_substring(const char *str, const char *substr) {
-    if (!str || !substr || !*substr) return 0; // Handle NULL or empty substr
+    if (!str || !substr || !*substr) return 0; // Handle NULL or empty substring
 
-    for (const char *s = str; *s != '\0'; s++) {  // Ensure we don't go past the end
-        const char *temp = s, *sub = substr;
+    int str_len = my_strlen(str);
+    int sub_len = my_strlen(substr);
 
-        while (*temp != '\0' && *sub != '\0' && *temp == *sub) {
-            temp++;
-            sub++;
+    if (sub_len > str_len) return 0; // If substr is longer, it can't be inside str
+
+    for (int i = 0; i <= str_len - sub_len; i++) {
+        int j = 0;
+
+        while (j < sub_len && str[i + j] == substr[j]) {
+            j++;
         }
 
-        if (*sub == '\0') return true; // Found match
+        if (j == sub_len) return true; // Found match
     }
     return false; // Not found
 }
