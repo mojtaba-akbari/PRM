@@ -10,16 +10,24 @@ static const int BASH_PREFIX_LEN = 4;
 static const int PREFIX_NUMBERS=2;
 
 static __always_inline bool contains_substring(const char *str, const char *substr) {
-    int i, j;
-    for (i = 0; str[i] != '\0'; i++) {
-        for (j = 0; substr[j] != '\0'; j++) {
-            if (str[i + j] != substr[j])
-                break;
+    if (!str || !substr) return false; // Handle NULL pointers
+
+    const char *s = str, *sub;
+    while (*s) {
+        sub = substr;
+        const char *temp = s;
+        
+        while (*temp && *sub && *temp == *sub) {
+            temp++;
+            sub++;
         }
-        if (substr[j] == '\0')
-            return true;
+        
+        if (!*sub) return true; 
+        
+        s++;
     }
-    return false;
+
+    return false; 
 }
 
 static __always_inline bool is_slurmJob(struct task_struct *task) {
