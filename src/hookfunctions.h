@@ -9,17 +9,17 @@ static const int BASH_PREFIX_LEN = 4;
 
 static const int PREFIX_NUMBERS=2;
 
-static __always_inline int my_strlen(const char *s) {
+static int my_strlen(const char *s) {
     char buf[MAX_LEN];  // Buffer to safely store string
     size_t len = bpf_probe_read_str(buf, sizeof(buf), s); // Read safely
 
     return len > 0 ? len - 1 : 0; // Remove null terminator count
 }
 
-static __always_inline bool contains_substring(const char *str, const char *substr) {
+static bool contains_substring(const char *str, const char *substr) {
     if (!str || !substr) return 0;
 
-    char sub_buf[32];  
+    char sub_buf[MAX_LEN];  
     int sub_len = bpf_probe_read_str(sub_buf, sizeof(sub_buf), substr);
     if (sub_len <= 0) return 0;  
     sub_len--;  // Ignore null terminator
@@ -32,7 +32,7 @@ static __always_inline bool contains_substring(const char *str, const char *subs
 
     // Loop with explicit iteration limit to satisfy verifier
     #pragma unroll
-    for (int iter = 0; iter < 256; iter++) {
+    for (int iter = 0; iter < MAX_ITR; iter++) {
         if (ch == '\0') break; // End of string
 
         // Read next character of substring if needed
@@ -55,7 +55,7 @@ static __always_inline bool contains_substring(const char *str, const char *subs
     return false;  // Not found
 }
 
-static __always_inline bool is_slurmJob(struct task_struct *task) {
+static bool is_slurmJob(struct task_struct *task) {
     // Find the cgroup of SLURM JOB that is the best idea , otherwise you need check ENV variables which could be more than 10 //
     // Then Per Syscall Call All We Have Too Traverse Between Big Array // Mojtaba :)
 
@@ -89,7 +89,7 @@ static __always_inline bool is_slurmJob(struct task_struct *task) {
     return false;
 }
 
-static __always_inline bool bpf_checkPrefix(const char *str) {
+static bool bpf_checkPrefix(const char *str) {
     // look it up for all Prefix , if in Any prefix it get matched then it is part of our Table //
     int stageChecker=PREFIX_NUMBERS;
 

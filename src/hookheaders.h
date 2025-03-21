@@ -30,3 +30,7 @@
 #ifndef MAX_LEN
     #define MAX_LEN 32
 #endif
+
+#ifndef MAX_ITR
+    #define MAX_ITR 256
+#endif
