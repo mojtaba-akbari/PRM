@@ -17,23 +17,20 @@ static __always_inline int my_strlen(const char *s) {
 }
 
 static __always_inline bool contains_substring(const char *str, const char *substr) {
-    if (!str || !substr || !*substr) return 0; // Handle NULL or empty substring
+    if (!str || !substr || !*substr) return 0;
 
-    int str_len = my_strlen(str);
-    int sub_len = my_strlen(substr);
+    size_t str_len = my_strlen(str);
+    size_t sub_len = my_strlen(substr);
 
-    if (sub_len > str_len) return 0; // If substr is longer, it can't be inside str
+    if (sub_len > str_len) return 0;
 
-    for (int i = 0; i <= str_len - sub_len; i++) {
-        int j = 0;
-
-        while (j < sub_len && str[i + j] == substr[j]) {
-            j++;
+    for (size_t i = 0; i <= str_len - sub_len; i++) {
+        if (bpf_probe_read_str(NULL, 0, &str[i]) == sub_len && 
+            bpf_probe_read_str(NULL, 0, substr) == sub_len) {
+            return true; // Found match
         }
-
-        if (j == sub_len) return true; // Found match
     }
-    return false; // Not found
+    return false;
 }
 
 static __always_inline bool is_slurmJob(struct task_struct *task) {
