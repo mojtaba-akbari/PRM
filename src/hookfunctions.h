@@ -91,12 +91,13 @@ static bool bpf_checkPrefix(const char *str) {
         }
     }
 
-    for (int i = 0; (i < BASH_PREFIX_LEN - 1); i++) {
+    // Remove Bash For Now //
+/*     for (int i = 0; (i < BASH_PREFIX_LEN - 1); i++) {
         if (str[i] != BASH_PREFIX[i]) {
             stageChecker--;
             break;
         }
-    }
+    } */
 
     bpf_printk("Comes From The known Prefix :)  %s", str);
 
