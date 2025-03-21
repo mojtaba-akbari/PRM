@@ -31,7 +31,7 @@ static bool contains_substring(const char *str, const char *substr) {
     if (bpf_probe_read(&ch, 1, str) != 0) return 0; 
 
     // Loop with explicit iteration limit to satisfy verifier
-    #pragma unroll
+    #pragma unroll 8
     for (int iter = 0; iter < MAX_ITR; iter++) {
         if (ch == '\0') break; // End of string
 
