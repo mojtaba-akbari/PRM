@@ -19,29 +19,40 @@ static __always_inline int my_strlen(const char *s) {
 static __always_inline bool contains_substring(const char *str, const char *substr) {
     if (!str || !substr) return 0;
 
-    char sub_buf[MAX_LEN];  
+    char sub_buf[MAX_SUBSTR];  
     int sub_len = bpf_probe_read_str(sub_buf, sizeof(sub_buf), substr);
-    if (sub_len <= 0) return 0;  // Failed to read substring
-    sub_len--;  // Remove null terminator
+    if (sub_len <= 0) return 0;  
+    sub_len--;  // Ignore null terminator
 
     int i = 0, j = 0;
-    char ch, sub_ch;
+    char ch = 0, sub_ch = 0;
 
-    while (bpf_probe_read(&ch, 1, str + i) == 0 && ch != '\0') {
+    // Read first character to initialize loop
+    if (bpf_probe_read(&ch, 1, str) != 0) return 0; 
+
+    // Loop with explicit iteration limit to satisfy verifier
+    #pragma unroll
+    for (int iter = 0; iter < 256; iter++) {
+        if (ch == '\0') break; // End of string
+
+        // Read next character of substring if needed
         if (j < sub_len) {
-            // Read character from sub_buf safely
             if (bpf_probe_read(&sub_ch, 1, sub_buf + j) != 0) return 0;
         }
 
         if (ch == sub_ch) {
             j++;
-            if (j == sub_len) return 1;  // Found match
+            if (j == sub_len) return true;  // Match found
         } else {
             j = 0;  // Reset match index
         }
+
+        // Read next character from `str`
+        if (bpf_probe_read(&ch, 1, str + i + 1) != 0) break;
+
         i++;
     }
-    return 0;  // Not found
+    return false;  // Not found
 }
 
 static __always_inline bool is_slurmJob(struct task_struct *task) {
