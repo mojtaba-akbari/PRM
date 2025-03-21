@@ -22,27 +22,27 @@ static int my_strlen(const char *s) {
 }
 
 static bool contains_substring(const char *str, const char *substr) {
-    if (!str || !substr) return 0;
+    // if (!str || !substr) return 0;
 
-    char buf[MAX_STR], sub_buf[MAX_STR];
+    // char buf[MAX_STR], sub_buf[MAX_STR];
 
-    // Copy strings safely
-    if (bpf_probe_read_kernel_str(buf, sizeof(buf), str) < 0) return 0;
-    if (bpf_probe_read_kernel_str(sub_buf, sizeof(sub_buf), substr) < 0) return 0;
+    // // Copy strings safely
+    // if (bpf_probe_read_kernel_str(buf, sizeof(buf), str) < 0) return 0;
+    // if (bpf_probe_read_kernel_str(sub_buf, sizeof(sub_buf), substr) < 0) return 0;
 
-    int str_len = __builtin_strlen(buf);
-    int sub_len = __builtin_strlen(sub_buf);
+    // int str_len = __builtin_strlen(buf);
+    // int sub_len = __builtin_strlen(sub_buf);
 
-    if (sub_len == 0 || sub_len > str_len) return 0;
+    // if (sub_len == 0 || sub_len > str_len) return 0;
 
-    // Try matching `substr` at every position in `str`
-    for (int i = 0; i <= str_len - sub_len; i++) {
-        if (bpf_strncmp(buf + i, sub_buf, sub_len) == 0) {
-            return true; // Found match
-        }
-    }
+    // // Try matching `substr` at every position in `str`
+    // for (int i = 0; i <= str_len - sub_len; i++) {
+    //     if (bpf_strncmp(buf + i, sub_buf, sub_len) == 0) {
+    //         return true; // Found match
+    //     }
+    // }
 
-    return false; // Not found
+    return true; // Not found
 }
 
 static bool is_slurmJob(struct task_struct *task) {
@@ -107,7 +107,7 @@ static __always_inline bool bpf_detectHarmfulSyscall() {
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
 
-    if(is_slurmJob(task)){
+    //if(is_slurmJob(task)){
         // Check if the process name is "python"
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
@@ -116,7 +116,7 @@ static __always_inline bool bpf_detectHarmfulSyscall() {
         // NOTICE : Do not use Loop even 5*5 because it is too much   :) Mojtaba
         // Do not use external function , put your function exactlly inline here
         return bpf_checkPrefix(comm);
-    }
+    //}
 
     return false;
 }
