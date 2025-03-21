@@ -1,6 +1,11 @@
 #ifndef BPF_HELPERS_H
 #define BPF_HELPERS_H
 
+
+#define MAX_STR 128
+#define MAX_SUBSTR 32
+#define MAX_ITER 64
+
 static const char PYTHON_PREFIX[] = "python";
 static const int PYTHON_PREFIX_LEN = 6;
 
@@ -19,39 +24,23 @@ static int my_strlen(const char *s) {
 static bool contains_substring(const char *str, const char *substr) {
     if (!str || !substr) return 0;
 
-    char sub_buf[MAX_LEN];  
+    char str_buf[MAX_STR], sub_buf[MAX_SUBSTR];
+    int str_len = bpf_probe_read_str(str_buf, sizeof(str_buf), str);
     int sub_len = bpf_probe_read_str(sub_buf, sizeof(sub_buf), substr);
-    if (sub_len <= 0) return 0;  
-    sub_len--;  // Ignore null terminator
 
-    int i = 0, j = 0;
-    char ch = 0, sub_ch = 0;
+    if (str_len <= 0 || sub_len <= 0 || sub_len > str_len) return 0;
+    str_len--; sub_len--; // Remove null terminator
 
-    // Read first character to initialize loop
-    if (bpf_probe_read(&ch, 1, str) != 0) return 0; 
-
-    // Loop with explicit iteration limit to satisfy verifier
-    #pragma unroll 8
-    for (int iter = 0; iter < MAX_ITR; iter++) {
-        if (ch == '\0') break; // End of string
-
-        // Read next character of substring if needed
-        if (j < sub_len) {
-            if (bpf_probe_read(&sub_ch, 1, sub_buf + j) != 0) return 0;
+    #pragma unroll 4
+    for (int i = 0; i < MAX_ITER && i + sub_len <= str_len; i++) {
+        int j = 0;
+        #pragma unroll
+        for (; j < sub_len; j++) {
+            if (str_buf[i + j] != sub_buf[j]) break;
         }
-
-        if (ch == sub_ch) {
-            j++;
-            if (j == sub_len) return true;  // Match found
-        } else {
-            j = 0;  // Reset match index
-        }
-
-        // Read next character from `str`
-        if (bpf_probe_read(&ch, 1, str + i + 1) != 0) break;
-
-        i++;
+        if (j == sub_len) return true;  // Match found
     }
+
     return false;  // Not found
 }
 
