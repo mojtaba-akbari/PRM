@@ -73,7 +73,7 @@ static bool is_slurmJob(struct task_struct *task) {
                 bpf_printk("Process is part of a SLURM job: %s", buffer);
                 return true;
             }
-        }cyzxvX5LQJyTG3ZUc5xg
+        }
     }
 
     return false;
