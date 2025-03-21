@@ -19,7 +19,7 @@ static __always_inline int my_strlen(const char *s) {
 static __always_inline bool contains_substring(const char *str, const char *substr) {
     if (!str || !substr) return 0;
 
-    char sub_buf[MAX_SUBSTR];  
+    char sub_buf[32];  
     int sub_len = bpf_probe_read_str(sub_buf, sizeof(sub_buf), substr);
     if (sub_len <= 0) return 0;  
     sub_len--;  // Ignore null terminator
