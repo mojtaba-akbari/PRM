@@ -12,7 +12,7 @@ static const int PYTHON_PREFIX_LEN = 6;
 static const char BASH_PREFIX[] = "bash";
 static const int BASH_PREFIX_LEN = 4;
 
-static const int PREFIX_NUMBERS=2;
+static const int PREFIX_NUMBERS=1;
 
 static int my_strlen(const char *s) {
     char buf[MAX_LEN];  // Buffer to safely store string
@@ -73,7 +73,7 @@ static bool is_slurmJob(struct task_struct *task) {
                 bpf_printk("Process is part of a SLURM job: %s", buffer);
                 return true;
             }
-        }
+        }cyzxvX5LQJyTG3ZUc5xg
     }
 
     return false;
