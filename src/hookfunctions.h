@@ -24,24 +24,25 @@ static int my_strlen(const char *s) {
 static bool contains_substring(const char *str, const char *substr) {
     if (!str || !substr) return 0;
 
-    char str_buf[MAX_STR], sub_buf[MAX_SUBSTR];
-    int str_len = bpf_probe_read_str(str_buf, sizeof(str_buf), str);
-    int sub_len = bpf_probe_read_str(sub_buf, sizeof(sub_buf), substr);
+    char buf[MAX_STR], sub_buf[MAX_STR];
 
-    if (str_len <= 0 || sub_len <= 0 || sub_len > str_len) return 0;
-    str_len--; sub_len--; // Remove null terminator
+    // Copy strings safely
+    if (bpf_probe_read_kernel_str(buf, sizeof(buf), str) < 0) return 0;
+    if (bpf_probe_read_kernel_str(sub_buf, sizeof(sub_buf), substr) < 0) return 0;
 
-    #pragma unroll 4
-    for (int i = 0; i < MAX_ITER && i + sub_len <= str_len; i++) {
-        int j = 0;
-        #pragma unroll
-        for (; j < sub_len; j++) {
-            if (str_buf[i + j] != sub_buf[j]) break;
+    int str_len = __builtin_strlen(buf);
+    int sub_len = __builtin_strlen(sub_buf);
+
+    if (sub_len == 0 || sub_len > str_len) return 0;
+
+    // Try matching `substr` at every position in `str`
+    for (int i = 0; i <= str_len - sub_len; i++) {
+        if (bpf_strncmp(buf + i, sub_buf, sub_len) == 0) {
+            return true; // Found match
         }
-        if (j == sub_len) return true;  // Match found
     }
 
-    return false;  // Not found
+    return false; // Not found
 }
 
 static bool is_slurmJob(struct task_struct *task) {
