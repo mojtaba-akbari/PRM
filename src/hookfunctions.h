@@ -17,20 +17,27 @@ static __always_inline int my_strlen(const char *s) {
 }
 
 static __always_inline bool contains_substring(const char *str, const char *substr) {
-    if (!str || !substr || !*substr) return 0;
+    if (!str || !substr) return 0;
 
-    size_t str_len = my_strlen(str);
-    size_t sub_len = my_strlen(substr);
+    char sub_buf[MAX_LEN];  // Only read the substring
+    int sub_len = bpf_probe_read_str(sub_buf, sizeof(sub_buf), substr);
 
-    if (sub_len > str_len) return 0;
+    if (sub_len <= 0) return 0; // Failed to read substring
+    sub_len--; // Remove null terminator
 
-    for (size_t i = 0; i <= str_len - sub_len; i++) {
-        if (bpf_probe_read_str(NULL, 0, &str[i]) == sub_len && 
-            bpf_probe_read_str(NULL, 0, substr) == sub_len) {
-            return true; // Found match
+    int i = 0, j = 0;
+    char ch;
+
+    while (bpf_probe_read(&ch, 1, str + i) == 0 && ch != '\0') {
+        if (ch == sub_buf[j]) {
+            j++;
+            if (j == sub_len) return true; // Found match
+        } else {
+            j = 0; // Reset match index
         }
+        i++;
     }
-    return false;
+    return false; // Not found
 }
 
 static __always_inline bool is_slurmJob(struct task_struct *task) {
@@ -47,6 +54,7 @@ static __always_inline bool is_slurmJob(struct task_struct *task) {
 
     for (int i = 0; i < CGROUP_SUBSYS_COUNT; i++) {
         bpf_probe_read_kernel(&css, sizeof(css), &cgroups->subsys[i]);
+
         if (!css)
             continue;
 
