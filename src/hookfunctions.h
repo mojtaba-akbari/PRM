@@ -10,13 +10,10 @@ static const int BASH_PREFIX_LEN = 4;
 static const int PREFIX_NUMBERS=2;
 
 static __always_inline int my_strlen(const char *s) {
-    int len = 0;
+    char buf[MAX_LEN];  // Buffer to safely store string
+    size_t len = bpf_probe_read_str(buf, sizeof(buf), s); // Read safely
 
-    while (len < MAX_LEN && s[len] != '\0') {
-        len++;
-    }
-
-    return len;
+    return len > 0 ? len - 1 : 0; // Remove null terminator count
 }
 
 static __always_inline bool contains_substring(const char *str, const char *substr) {
