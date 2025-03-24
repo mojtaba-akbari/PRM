@@ -27,7 +27,7 @@ int BPF_PROG(hookentry_write, struct file *file, int mask) {
 
 // Any Write Open File Redirected To Home Directory //
 // Mojtaba, At the opening time you are able to change the open struct //
-SEC("lsm/path_openat")
+SEC("lsm/inode_create")
 int BPF_PROG(hookentry_open, struct path *dir, struct dentry *dentry, int flags, umode_t mode)
 {
     // Put return -EPERM for rejecting any Write // General Role // Mojtaba
