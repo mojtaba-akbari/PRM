@@ -14,7 +14,7 @@ static int strlen(const char *str) {
 
     #define MAX_LEN 128  // To avoid verifier issues
 
-    #pragma unroll
+    #pragma unroll // To avoid More Iteration
     for (int i = 0; i < MAX_LEN; i++) {
         char c;
         if (bpf_probe_read_kernel(&c, sizeof(c), &str[i]) < 0) break;
@@ -63,6 +63,8 @@ static bool is_slurmJob(struct task_struct *task) {
     if (!cgroups)
         return false;
 
+    bpf_printk("I took the cgroup of task: %d",CGROUP_SUBSYS_COUNT);
+
     for (int i = 0; i < CGROUP_SUBSYS_COUNT; i++) {
         bpf_probe_read_kernel(&css, sizeof(css), &cgroups->subsys[i]);
 
@@ -73,6 +75,8 @@ static bool is_slurmJob(struct task_struct *task) {
         const char *cgroup_name = BPF_CORE_READ(cgrp, kn, name);
 
         ret = bpf_probe_read_kernel_str(buffer, sizeof(buffer), cgroup_name);
+
+        bpf_printk("cgroup name : %s",buffer);
 
         if (ret > 0) {
             // Use the custom string comparison function
