@@ -8,11 +8,34 @@
 
 char _license[] SEC("license") = "GPL";
 
+// Put return -EPERM for rejecting any Write // General Role // Mojtaba
+// If you want to put another struct in the flow do not forget to return 0 to let it keeps going // Mojtaba
+
 // Write ----> STDOUT, File, Pipe //
+// Mojtaba, In permission you can not change any struct because it is just deny or allow //
 SEC("lsm/file_permission")
 int BPF_PROG(hookentry_write, struct file *file, int mask) {
 
-    if(bpf_detectHarmfulSyscall()) return -EPERM;
+    
+    //if(bpf_detectHarmfulSyscall()){
+    //    return -EPERM;
+    //}
+
+    // Allow the write operations
+    return 0;
+}
+
+// Any Write Open File Redirected To Home Directory //
+// Mojtaba, At the opening time you are able to change the open struct //
+SEC("lsm/path_openat")
+int BPF_PROG(hookentry_open, struct path *dir, struct dentry *dentry, int flags, umode_t mode)
+{
+    // Put return -EPERM for rejecting any Write // General Role // Mojtaba
+    // If you want to put another struct in the flow do not forget to return 0 to let it keeps going // Mojtaba
+    
+    if(bpf_detectHarmfulSyscall()){
+        redirectWritingDestinationFile(dir, dentry, flags, mode);
+    }
 
     // Allow the write operations
     return 0;
