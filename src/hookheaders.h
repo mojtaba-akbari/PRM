@@ -34,3 +34,7 @@
 #ifndef MAX_ITR
     #define MAX_ITR 256
 #endif
+
+#ifndef SLURM_CHECK
+    #define SLURM_CHECK true
+#endif

@@ -1,11 +1,6 @@
 #ifndef BPF_HELPERS_H
 #define BPF_HELPERS_H
 
-
-#define MAX_STR 128
-#define MAX_SUBSTR 32
-#define MAX_ITER 64
-
 static const char PYTHON_PREFIX[] = "python";
 static const int PYTHON_PREFIX_LEN = 6;
 
@@ -14,35 +9,46 @@ static const int BASH_PREFIX_LEN = 4;
 
 static const int PREFIX_NUMBERS=1;
 
-static int my_strlen(const char *s) {
-    char buf[MAX_LEN];  // Buffer to safely store string
-    size_t len = bpf_probe_read_str(buf, sizeof(buf), s); // Read safely
+static int strlen(const char *str) {
+    int len = 0;
 
-    return len > 0 ? len - 1 : 0; // Remove null terminator count
+    #define MAX_LEN 128  // To avoid verifier issues
+
+    #pragma unroll
+    for (int i = 0; i < MAX_LEN; i++) {
+        char c;
+        if (bpf_probe_read_kernel(&c, sizeof(c), &str[i]) < 0) break;
+        if (c == '\0') break;
+        len++;
+    }
+
+    return len;
 }
 
-static bool contains_substring(const char *str, const char *substr) {
-    // if (!str || !substr) return 0;
+static bool strstr(char *str, char *substr){
+    int i,j=0;
+    int str_len= strlen(str);
+    int substr_len= strlen(substr);
 
-    // char buf[MAX_STR], sub_buf[MAX_STR];
+    bool innerBreak=true;
 
-    // // Copy strings safely
-    // if (bpf_probe_read_kernel_str(buf, sizeof(buf), str) < 0) return 0;
-    // if (bpf_probe_read_kernel_str(sub_buf, sizeof(sub_buf), substr) < 0) return 0;
+    for(;i<=str_len -1; i++){
+        
+        if(str_len - i < substr_len) return false;
 
-    // int str_len = __builtin_strlen(buf);
-    // int sub_len = __builtin_strlen(sub_buf);
+        for(j=0; j<=substr_len-1;j++){
+            if(str[i+j] != substr[j]) {
+                innerBreak=false;
+                break;
+            }
+        }
 
-    // if (sub_len == 0 || sub_len > str_len) return 0;
+        if(innerBreak) return true;
+        else innerBreak=true;
+    }
 
-    // // Try matching `substr` at every position in `str`
-    // for (int i = 0; i <= str_len - sub_len; i++) {
-    //     if (bpf_strncmp(buf + i, sub_buf, sub_len) == 0) {
-    //         return true; // Found match
-    //     }
-    // }
+    return false;
 
-    return true; // Not found
 }
 
 static bool is_slurmJob(struct task_struct *task) {
@@ -67,10 +73,13 @@ static bool is_slurmJob(struct task_struct *task) {
         const char *cgroup_name = BPF_CORE_READ(cgrp, kn, name);
 
         ret = bpf_probe_read_kernel_str(buffer, sizeof(buffer), cgroup_name);
+
         if (ret > 0) {
             // Use the custom string comparison function
-            if (contains_substring(buffer, "slurm") || contains_substring(buffer, "job_")) {
+            if (strstr(buffer, "slurm") || strstr(buffer, "job_")) {
+
                 bpf_printk("Process is part of a SLURM job: %s", buffer);
+
                 return true;
             }
         }
@@ -83,8 +92,11 @@ static bool bpf_checkPrefix(const char *str) {
     // look it up for all Prefix , if in Any prefix it get matched then it is part of our Table //
     int stageChecker=PREFIX_NUMBERS;
 
+    bpf_printk("Checking Prefix ... :)  %s", str);
+
     // Phase 1 Checking Prefix , Mojtaba :| Check Prefix to make sure about the process which is running  //
-    for (int i = 0; (i < PYTHON_PREFIX_LEN - 1); i++) {
+    // Do not forget checking the String end \0 
+    for (int i = 0; (i < PYTHON_PREFIX_LEN - 1) && (str[i] != '\0'); i++) {
         if (str[i] != PYTHON_PREFIX[i]) {
             stageChecker--;
             break;
@@ -99,7 +111,7 @@ static bool bpf_checkPrefix(const char *str) {
         }
     } */
 
-    bpf_printk("Comes From The known Prefix :)  %s", str);
+    bpf_printk("For Prefix %s , Have been found  %d", str, stageChecker);
 
     return stageChecker==0? false:true; //False means it is not part of our patterns
 }
@@ -108,7 +120,7 @@ static __always_inline bool bpf_detectHarmfulSyscall() {
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
 
-    //if(is_slurmJob(task)){
+    if(is_slurmJob(task) && SLURM_CHECK){
         // Check if the process name is "python"
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
@@ -117,7 +129,7 @@ static __always_inline bool bpf_detectHarmfulSyscall() {
         // NOTICE : Do not use Loop even 5*5 because it is too much   :) Mojtaba
         // Do not use external function , put your function exactlly inline here
         return bpf_checkPrefix(comm);
-    //}
+    }
 
     return false;
 }

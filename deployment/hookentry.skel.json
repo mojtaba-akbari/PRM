@@ -1,1 +1,0 @@
-{"bpf_skel":{"data_sections":[],"maps":[{"ident":"rodata_str1_1","name":".rodata.str1.1"},{"ident":"rodata","name":"hookentr.rodata"}],"obj_name":"hookentry_bpf","progs":[{"attach":"lsm/file_permission","link":true,"name":"hookentry_write"}]},"eunomia_version":"0.3.4"}
