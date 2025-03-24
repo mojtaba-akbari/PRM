@@ -80,7 +80,7 @@ static bool is_slurmJob(struct task_struct *task) {
 
         if (ret > 0) {
             // Use the custom string comparison function
-            if (__builtin_strcmp(buffer,"slurmstepd.scope")) {
+            if (__builtin_strcmp(buffer,"slurmstepd.scope") == 0) {
 
                 bpf_printk("Process is part of a SLURM job: %s", buffer);
 
