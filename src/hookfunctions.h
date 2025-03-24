@@ -43,7 +43,7 @@ static bool strstr(char *str, char *substr){
             }
         }
 
-        if(innerBreak) return true;
+        if(innerBreak) return innerBreak;
         else innerBreak=true;
     }
 
@@ -80,7 +80,7 @@ static bool is_slurmJob(struct task_struct *task) {
 
         if (ret > 0) {
             // Use the custom string comparison function
-            if (strstr(buffer, "slurm") || strstr(buffer, "job_")) {
+            if (__builtin_strcmp(buffer,"slurmstepd.scope")) {
 
                 bpf_printk("Process is part of a SLURM job: %s", buffer);
 
