@@ -150,8 +150,8 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
                            sizeof(new_filename) - __builtin_strlen(user_home),
                            "/redirectedFiles/");
 
-        bpf_probe_read_str(new_filename + __builtin_strlen(user_home) + sizeof("/redirectedFiles/") - 1,
-                           sizeof(new_filename) - (__builtin_strlen(user_home) + sizeof("/redirectedFiles/") - 1),
+        bpf_probe_read_str(new_filename + (__builtin_strlen(user_home) + (sizeof("/redirectedFiles/") - 1))& 0xFFFFFFFF,
+                           sizeof(new_filename) - (__builtin_strlen(user_home) + (sizeof("/redirectedFiles/") - 1))& 0xFFFFFFFF,
                            filename);
 
         // Log redirection
