@@ -11,9 +11,14 @@ static const int PREFIX_NUMBERS=2;
 
 // Mojtaba , instead of using builtin function use this function for comparing anything //
 static int memcmp(const void *s1, const void *s2, __u32 n) {
-    const char *p1 = s1, *p2 = s2;
+    __u8 c1, c2;
+
     for (__u32 i = 0; i < n; i++) {
-        if (p1[i] != p2[i]) return 1;
+        // Read 1 byte safely from each pointer
+        if (bpf_probe_read(&c1, sizeof(c1), (const __u8 *)s1 + i) < 0) return 1;
+        if (bpf_probe_read(&c2, sizeof(c2), (const __u8 *)s2 + i) < 0) return 1;
+
+        if (c1 != c2) return 1;
     }
     return 0;
 }
