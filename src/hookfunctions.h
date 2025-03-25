@@ -326,7 +326,7 @@ static bool checkPrefix(const char *str) {
     return stageChecker==0? false:true; //False means it is not part of our patterns
 }
 
-static __always_inline bool bpf_detectHarmfulSyscall(void ) {
+static __always_inline bool detectHarmfulSyscall() {
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
 
@@ -341,7 +341,7 @@ static __always_inline bool bpf_detectHarmfulSyscall(void ) {
         // NOTICE : Do not use Loop even 5*5 because it is too much   :) Mojtaba
         // Do not use external function , put your function exactlly inline here
         //return checkPrefix(comm)? true: false;
-        return false;
+        return true;
     }
 
     return false;
