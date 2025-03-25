@@ -249,7 +249,7 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 
 // Mojtaba, Find the ancester parent for the syscalls //
 // Where Syscalls come from //
-static int getAncestorParent(){
+static int getAncestorParent(struct process_relation * relation_list){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct task_struct *parent;
     struct task_struct *grandparent;
@@ -331,12 +331,26 @@ static char * getTypeOfProcess(struct task_struct *task) {
 }
 
 static __always_inline bool detectHarmfulSyscall() {
+    // Load Process Relation Table Roles //
+    struct process_relation *relation_list;
+    __u32 key = 0; // Static relation list location by key
+    relation_list = bpf_map_lookup_elem(&relation_map, &key);
+
+    if (!relation_list) {
+        defineProcessRelation();
+        relation_list = bpf_map_lookup_elem(&relation_map, &key);
+        if(!relation_list){
+            bpf_printk("Was not able to load PRM");
+            return false;
+        }
+    }
+
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
 
     // Slurm Check Should come from Config file //
     // Probably in next iterations it will be retrieved from configuration files //
-    if(getAncestorParent()){
+    if(getAncestorParent(relation_list)){
         // Check if the process name is "python"
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
