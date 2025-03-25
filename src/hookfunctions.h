@@ -279,7 +279,7 @@ static int getAncestorParent(struct process_relation * relation_list){
 
     // Mojtaba, Get into roles and find pattern :) ;) I know I know i am best , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , be kind ;)
     // I customized the if clouse to be readable so put your roles there
-    for (int i = 0; i < MAX_RELATION; i++) {
+    for (int i = 0; i < sizeof(relation_list); i++) {
         if (
             (relation_list[i].process == NULL) ? true : strcmp(comm, relation_list[i].process) == 0 &&
             (relation_list[i].parent == NULL) ? true : strcmp(p_comm, relation_list[i].parent) == 0 &&
