@@ -229,7 +229,8 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 
 // Mojtaba, Find the ancester parent for the syscalls //
 // Where Syscalls come from //
-static int getAncestorParent(struct task_struct *task){
+static int getAncestorParent(){
+    struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct task_struct *parent;
     char comm[TASK_COMM_LEN], p_comm[TASK_COMM_LEN];
 
@@ -331,7 +332,7 @@ static __always_inline bool bpf_detectHarmfulSyscall(void ) {
 
     // Slurm Check Should come from Config file //
     // Probably in next iterations it will be retrieved from configuration files //
-    if(getAncestorParent(task)){
+    if(getAncestorParent()){
         // Check if the process name is "python"
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
