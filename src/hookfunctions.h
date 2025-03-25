@@ -142,16 +142,24 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
     // If the file is outside the home directory, redirect it
     if (memcmp(filename, user_home, __builtin_strlen(user_home)) != 0) {
 
-        __builtin_memset(new_filename, 0, sizeof(new_filename));
+        // Because of Multiple use define some TEMP holder here
+        size_t new_filename_s = sizeof(new_filename);
+        size_t user_home_s = __builtin_strlen(user_home);
+        size_t constant_part_s = sizeof(REDIRECTED_DIR)-1;
 
-        bpf_probe_read_str(new_filename, sizeof(new_filename), user_home);
+        __builtin_memset(new_filename, 0, new_filename_s);
 
-        bpf_probe_read_str(new_filename + __builtin_strlen(user_home),
-                           sizeof(new_filename) - __builtin_strlen(user_home),
-                           "/redirectedFiles/");
+        bpf_probe_read_str(new_filename, new_filename_s, user_home);
 
-        bpf_probe_read_str(new_filename + (size_t)(__builtin_strlen(user_home) + (sizeof("/redirectedFiles/") - 1)),
-                           (size_t)(sizeof(new_filename) - (__builtin_strlen(user_home) + (sizeof("/redirectedFiles/") - 1))),
+        bpf_probe_read_str(new_filename + user_home_s,
+                           new_filename_s - user_home_s,
+                           REDIRECTED_DIR);
+
+        // Mojtaba , Do not forget to check the positive value of offset because compiler verifier does not allow you to put it freely here :) //
+        size_t user_home_constant = user_home_s + constant_part_s;
+
+        bpf_probe_read_str(new_filename + user_home_constant,
+                           (new_filename_s - user_home_constant),
                            filename);
 
         // Log redirection

@@ -61,6 +61,10 @@
     #define HOME_DIR "/home/"
 #endif
 
+#ifndef REDIRECTED_DIR
+    #define REDIRECTED_DIR "/redirectedFiles/"
+#endif
+
 #ifndef SLURM_JOB_USER
     #define SLURM_JOB_USER "SLURM_JOB_USER="
 #endif
