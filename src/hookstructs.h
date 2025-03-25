@@ -1,6 +1,6 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_STRUCTS
 #define FILTERING_SYSCALL_FRAMEWORK_STRUCTS
-#define MAX_RELATION 50 // 50 Roles , if you need more increase it and build project again
+
 
 // Mojtaba , struct for getting pattern for harmfull chain of execution 
 // I call it PRM Process Relation Map
@@ -10,12 +10,7 @@ struct process_relation {
     char *grandparent;
 };
 
-struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, MAX_RELATION);
-    __type(key, __u32);
-    __type(value, struct process_relation);
-} relation_map SEC(".maps");
+
 
 /* Roles :
     [NULL,NULL,NULL] ---> EveryThings (Deny Anything)
@@ -28,6 +23,13 @@ struct {
     [X,X,X] ---> Focus On This pattern (For specific pattern which is knownable)
 */
 
+#define MAX_RELATION 8 // 50 Roles , if you need more increase it and build project again *** Do not Forget to change this value
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, MAX_RELATION);
+    __type(key, __u32);
+    __type(value, struct process_relation);
+} relation_map SEC(".maps");
 
 static void defineProcessRelation(){
     struct process_relation relation_list_static[] = {
@@ -41,8 +43,9 @@ static void defineProcessRelation(){
         {NULL, NULL, "slurm_script"} // High Strict slurm script level
         // Add more relationships if needed
     };
-    
-    __u32 key = 0;
-    bpf_map_update_elem(&relation_map,&key,&relation_list_static,BPF_ANY);
+
+    for (__u32 i = 0; i < (sizeof(relation_list_static) / sizeof(struct process_relation)); i++) {
+        bpf_map_update_elem(&relation_map, &i, &relation_list_static[i], BPF_ANY);
+    }
 }
 #endif

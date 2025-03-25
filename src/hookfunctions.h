@@ -249,7 +249,7 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 
 // Mojtaba, Find the ancester parent for the syscalls //
 // Where Syscalls come from //
-static int getAncestorParent(struct process_relation * relation_list){
+static int getAncestorParent(){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct task_struct *parent;
     struct task_struct *grandparent;
@@ -279,15 +279,20 @@ static int getAncestorParent(struct process_relation * relation_list){
 
     // Mojtaba, Get into roles and find pattern :) ;) I know I know i am best , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , be kind ;)
     // I customized the if clouse to be readable so put your roles there
-    for (int i = 0; i < sizeof(relation_list); i++) {
-        if (
-            (relation_list[i].process == NULL) ? true : strcmp(comm, relation_list[i].process) == 0 &&
-            (relation_list[i].parent == NULL) ? true : strcmp(p_comm, relation_list[i].parent) == 0 &&
-            (relation_list[i].grandparent == NULL) ? true : strcmp(grand_p_comm, relation_list[i].grandparent) == 0
-           ) 
-        {
-            bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (relation_list[i].process == NULL) ? "" : relation_list[i].process , (relation_list[i].parent == NULL) ? "" : relation_list[i].parent, (relation_list[i].grandparent == NULL) ? "" : relation_list[i].grandparent);
-            return 1;  // Process is part of a known hierarchy
+    struct process_relation *prm;
+    for (int i = 0; i < MAX_RELATION; i++) {
+
+        prm = bpf_map_lookup_elem(&relation_map, &i); // Mojtaba , Retreive from user-space memory allocation
+        if(prm){
+            if (
+                ((prm->process == NULL) ? true : strcmp(comm, prm->process) == 0) &&
+                ((prm->parent == NULL) ? true : strcmp(p_comm, prm->parent) == 0) &&
+                ((prm->grandparent == NULL) ? true : strcmp(grand_p_comm, prm->grandparent) == 0)
+            ) 
+            {
+                bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
+                return 1;  // Process is part of a known hierarchy
+            }
         }
     }
     
@@ -350,7 +355,7 @@ static __always_inline bool detectHarmfulSyscall() {
 
     // Slurm Check Should come from Config file //
     // Probably in next iterations it will be retrieved from configuration files //
-    if(getAncestorParent(relation_list)){
+    if(getAncestorParent()){
         // Check if the process name is "python"
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
