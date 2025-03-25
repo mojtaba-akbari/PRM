@@ -103,7 +103,10 @@ static int denyWritingDestinationFile(struct file *file, int mask){
 // This function seize more space than usuall so please avoid of any any other space //
 static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentry, int flags, umode_t mode){
     struct task_struct *task;
+    struct fs_struct *fs;
+    struct path cwd_path;
     struct mm_struct *mm;
+    
     unsigned long env_start;
     char env_buf[ENV_MAX_SIZE] = {}; // Mojtaba, I calculated it do not change the MAX_SIZE Please , 15+15=32
     char user_home[USR_HOME_DIR_SIZE] = HOME_DIR;
