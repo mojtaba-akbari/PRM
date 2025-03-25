@@ -151,6 +151,11 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
 
         bpf_probe_read_str(new_filename, new_filename_s, user_home);
 
+        if (user_home_s >= new_filename_s) {
+            bpf_printk("Invalid Memory Offset : %s, %s", user_home, new_filename);
+            return 0; // Prevent invalid memory access
+        }
+
         bpf_probe_read_str(new_filename + user_home_s,
                            new_filename_s - user_home_s,
                            REDIRECTED_DIR);
