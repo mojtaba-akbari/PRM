@@ -112,9 +112,26 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
 
     // Get current task
     task = (struct task_struct *)bpf_get_current_task_btf();
+
     if (!task) {
         return 0;
     }
+
+    fs = task->fs;
+    if (!fs) {
+        return 0; // If fs struct is unavailable, just return
+    }
+
+    // Get the current working directory (cwd)
+    cwd_path = fs->pwd;
+    char cwd_buf[USR_HOME_DIR_SIZE]; // Store the working directory path
+
+    // Read the path of the current working directory into the buffer
+    bpf_probe_read_str(cwd_buf, sizeof(cwd_buf), cwd_path.dentry->d_name.name);
+
+    // Print the current working directory for debugging
+    bpf_printk("Current working directory: %s\n", cwd_buf);
+
 
     // Get memory mapping (mm_struct) from task
     mm = task->mm;
