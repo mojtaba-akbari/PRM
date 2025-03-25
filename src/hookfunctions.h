@@ -232,7 +232,7 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 static int getAncestorParent(){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct task_struct *parent;
-    char comm[TASK_COMM_LEN], p_comm[TASK_COMM_LEN];
+    char comm[TASK_COMM_LEN], p_comm[TASK_COMM_LEN], grand_p_comm[TASK_COMM_LEN];
 
     if (!task) return 0;
 
@@ -244,6 +244,29 @@ static int getAncestorParent(){
         bpf_probe_read_kernel_str(p_comm, sizeof(p_comm), parent->comm);
     } else {
         return 0;
+    }
+
+    // Mojtaba, sh is tricky because sh is used to for both of internal daemon and user-space
+    // So we need to take care of it
+    if (memcmp(p_comm, PREFIX_SH, PREFIX_SH_LEN) == 0) {
+        // Again check SH Parent
+        struct task_struct *grandparent = parent->real_parent;
+        if (grandparent) {
+            bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
+        } else {
+            return 0;
+        }
+
+        // If "sh" is launched from a shell, treat it as a user process :)
+        // Do not use Goto keywords for jump //
+        if (memcmp(p_comm, PREFIX_BASH, PREFIX_BASH_LEN) == 0 || memcmp(p_comm, PREFIX_ZSH, PREFIX_ZSH_LEN) == 0 || 
+            memcmp(p_comm, PREFIX_SSH, PREFIX_SSH_LEN) == 0 || memcmp(p_comm, PREFIX_FISH, PREFIX_FISH_LEN) == 0) {
+            bpf_printk("User Process Detected: %s (Parent: %s)\n", comm, p_comm);
+            return 1;
+        }
+        else {
+            bpf_printk("Internal Service Detected: %s (Parent: %s)\n", comm, p_comm);
+        }
     }
 
     // Mojtaba,  If parent is a shell or SSH process → USER PROCESS

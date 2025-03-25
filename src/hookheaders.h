@@ -125,3 +125,10 @@
 #ifndef PREFIX_FISH_LEN
     #define PREFIX_FISH_LEN 4
 #endif
+
+#ifndef PREFIX_SH
+    #define PREFIX_SH "sh"
+#endif
+#ifndef PREFIX_SH_LEN
+    #define PREFIX_SH_LEN 2
+#endif
