@@ -62,7 +62,7 @@
 #endif
 
 #ifndef REDIRECTED_DIR
-    #define REDIRECTED_DIR "/redirectedFiles/"
+    #define REDIRECTED_DIR "redirectedFiles/"
 #endif
 
 #ifndef SLURM_JOB_USER

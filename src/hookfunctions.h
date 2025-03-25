@@ -14,12 +14,14 @@ static int memcmp(const void *s1, const void *s2, __u32 n) {
     __u8 c1, c2;
 
     for (__u32 i = 0; i < n; i++) {
-        // Read 1 byte safely from each pointer
+        // Read 1 byte safely from each pointer // Mojtaba , Never compiler verifier does not allow you to use simple //
+        // s1[i] != s2[i] because of unbound memory offset
         if (bpf_probe_read(&c1, sizeof(c1), (const __u8 *)s1 + i) < 0) return 1;
         if (bpf_probe_read(&c2, sizeof(c2), (const __u8 *)s2 + i) < 0) return 1;
 
         if (c1 != c2) return 1;
     }
+
     return 0;
 }
 
@@ -125,11 +127,14 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
 
     // Mojtaba, Scan environment variables for "SLURM_JOB_USER=" 
     // Mojtaba , Put MAX_ITR because of long runing loop ofcurse this variable is part of first MAX_ITR //
-    for (int i = 0; i < MAX_ITR; i += sizeof(env_buf)) { 
+    for (int i = 0; i < MAX_ITR; i += sizeof(env_buf)) {
+
         if (bpf_probe_read_str(env_buf, sizeof(env_buf), (void *)(env_start + i)) < 0) {
             break; // take care close the loop if env address goes no where
         }
         
+        bpf_printk("ENV  %s\n", env_buf);
+
         if (memcmp(env_buf, SLURM_JOB_USER, SLURM_JOB_USER_LEN) == 0) {
             char *username = env_buf + 15; // Mojtaba , do not need to use memcp just point to the first char to \0
             bpf_probe_read_kernel_str(user_home + 6, sizeof(user_home) - 6, username);
@@ -182,6 +187,8 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
 
         // Redirect file path
         bpf_probe_write_user((void *)dentry->d_name.name, new_filename, sizeof(new_filename));
+
+        bpf_printk("New path for writing %s \n", dentry->d_name.name);
 
         return 0; // Allow file open with new filename
     }
