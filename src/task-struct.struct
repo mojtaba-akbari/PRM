@@ -1,0 +1,44 @@
+struct task_struct {
+    volatile long state;               // Process state (running, sleeping, etc.)
+    struct thread_info *thread_info;   // Information about the thread
+    struct mm_struct *mm;              // Memory descriptor (virtual memory)
+    struct fs_struct *fs;              // Filesystem info (current working dir, root dir, etc.)
+    struct files_struct *files;        // File descriptor table
+    struct signal_struct *signal;      // Signal handling info
+    struct pid *pid;                  // Process ID
+    struct task_struct *parent;        // Pointer to parent task
+    struct task_struct *real_parent;   // Pointer to real parent task
+    struct task_struct *group_leader;  // Leader of the process group
+    pid_t tgid;                        // Thread group ID (same for all threads in the group)
+    unsigned long flags;               // Flags indicating special properties of the task
+    unsigned int ptrace;               // Ptrace-related info (debugging)
+    struct timespec start_time;        // Process start time
+    struct timespec real_start_time;   // Real start time (for clock purposes)
+    struct rlimit rlim[RLIM_NLIMITS];  // Resource limits (memory, CPU, etc.)
+    struct sigqueue *sigqueue;         // Pending signals
+    struct cred *cred;                 // Credentials (UID, GID, capabilities)
+    struct list_head tasks;            // List of all tasks in the system
+    struct pid *tgid_pid;              // Task group ID (same as pid for the leader)
+    struct task_struct *next_task;     // Next task in the run queue
+    struct task_struct *prev_task;     // Previous task in the run queue
+    struct task_struct *real_next_task; // Real next task in the list
+    struct task_struct *real_prev_task; // Real previous task in the list
+    struct path pwd;                   // Current working directory (struct path)
+    struct path root;                  // Root directory (struct path)
+    struct path altroot;               // Alternate root directory (for chroot)
+    struct sched_entity se;            // Scheduling entity for the task
+    struct io_context *io_context;     // I/O context for the task
+    struct list_head cpu_timers[NR_CPUS]; // CPU timers for the task
+    struct mm_struct *active_mm;       // Active memory descriptor (for threads)
+    struct sigaction sa[NSIG];         // Signal actions
+    unsigned long saved_auxv[AT_VECTOR_SIZE]; // Auxiliary vector
+    unsigned int exit_code;            // Exit code of the process (if it has exited)
+    struct kernel_cap_struct caps;     // Capabilities of the task
+    struct mnt_namespace *mnt_ns;      // Mount namespace
+    struct uts_namespace *uts_ns;     // UTS namespace
+    struct ipc_namespace *ipc_ns;     // IPC namespace
+    struct net_namespace *net_ns;     // Network namespace
+    struct pid_namespace *pid_ns;     // PID namespace
+    struct cgroup_subsys_state *cgroup; // cgroup information for the task
+    // More fields (depending on kernel version)
+};

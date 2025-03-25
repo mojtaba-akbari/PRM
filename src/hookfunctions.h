@@ -25,7 +25,7 @@ static int memcmp(const void *s1, const void *s2, __u32 n) {
     return 0;
 }
 
-// Use Function to Return the size of char array //
+// Mojtaba, Use Function to Return the size of char array //
 // Take care of Stack Memory // Mojtaba
 static int strlen(const char *str) {
     int len = 0;
@@ -41,7 +41,7 @@ static int strlen(const char *str) {
     return len;
 }
 
-// Try To use __builtin_strcmp function for fix len //
+// Mojtaba, Try To use __builtin_strcmp function for fix len //
 // If you wanted to find Substr in String use this algorithm // Mojtaba
 static bool strstr(char *str, char *substr){
     int i,j=0;
@@ -69,7 +69,7 @@ static bool strstr(char *str, char *substr){
 
 }
 
-// Deny Any Write OutSide of Home Directory //
+// Mojtaba, Deny Any Write OutSide of Home Directory //
 // Check the Mask , Current Directory , And rewrite this part of memory then Let them to Open and Write file // Mojtaba
 static int denyWritingDestinationFile(struct file *file, int mask){
     struct dentry *dentry = file->f_path.dentry; // Get Destination
@@ -98,24 +98,58 @@ static int denyWritingDestinationFile(struct file *file, int mask){
     return 0;
 }
 
+// Mojtaba, Retreive ENV From Current Process //
+// Do not use it , till you need it emergency //
+// Please Do not change this algorithm because of more complixity //
+static void retreiveENVfromTask(struct task_struct * task, char * env, int env_len){
+    // unsigned long env_start;
+    // struct mm_struct *mm;
+    // char env_buf[ENV_MAX_SIZE] = {}; // Mojtaba, The Maximum Char of a Simple ENV i assume it 64 KEY=VALUE
+
+    // // Get memory mapping (mm_struct) from task
+    // mm = task->mm;
+    // if (!mm) {
+    //     return 0;
+    // }
+
+    // // Read the environment start address
+    // bpf_probe_read(&env_start, sizeof(env_start), &mm->env_start);
+
+    // // Mojtaba, Scan environment variables for "SLURM_JOB_USER=" 
+    // // Mojtaba , Put MAX_ITR because of long runing loop ofcurse this variable is part of first MAX_ITR //
+    // // I assume MAX_ITR for the highest numbers of ENV , But Take Care it is pointer to address not CHAR //
+    // for (int i = 0; i < MAX_ITR; i += sizeof(env_buf)) {
+
+    //     if (bpf_probe_read_str(env_buf, sizeof(env_buf), (void *)(env_start + i)) < 0) {
+    //         break; // take care close the loop if env address goes no where
+    //     }
+        
+    //     bpf_printk("ENV  %s\n", env_buf);
+
+    //     if (memcmp(env_buf, env, env_len) == 0) {
+    //         char *username = env_buf + 15; // Mojtaba , do not need to use memcp just point to the first char to \0
+    //         bpf_probe_read_kernel_str(user_home + 6, sizeof(user_home) - 6, username);
+    //         break;
+    //     }
+    // }
+}
+
 // Redirect Any Write in open Files To User Home Directory //
 // Open File Structure //
 // This function seize more space than usuall so please avoid of any any other space //
-static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentry, int flags, umode_t mode){
+static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *dentry, int flags, umode_t mode){
     struct task_struct *task;
     struct fs_struct *fs;
     struct path cwd_path;
     struct mm_struct *mm;
-    
+
     unsigned long env_start;
-    char env_buf[ENV_MAX_SIZE] = {}; // Mojtaba, I calculated it do not change the MAX_SIZE Please , 15+15=32
     char user_home[USR_HOME_DIR_SIZE] = HOME_DIR;
     char filename[MAX_DST_ADDRS];
     char new_filename[USR_HOME_DIR_SIZE];
 
     // Get current task
-    task = (struct task_struct *)bpf_get_current_task_btf();
-
+    task = (struct task_struct *) bpf_get_current_task_btf();
     if (!task) {
         return 0;
     }
@@ -136,32 +170,9 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
     bpf_printk("Current working directory: %s\n", cwd_buf);
 
 
-    // Get memory mapping (mm_struct) from task
-    mm = task->mm;
-    if (!mm) {
-        return 0;
-    }
+    bpf_probe_read_str(user_home + HOME_DIR_LEN ,__builtin_strlen(cwd_buf), cwd_buf);
 
-    // Read the environment start address
-    bpf_probe_read(&env_start, sizeof(env_start), &mm->env_start);
-
-    // Mojtaba, Scan environment variables for "SLURM_JOB_USER=" 
-    // Mojtaba , Put MAX_ITR because of long runing loop ofcurse this variable is part of first MAX_ITR //
-    for (int i = 0; i < MAX_ITR; i += sizeof(env_buf)) {
-
-        if (bpf_probe_read_str(env_buf, sizeof(env_buf), (void *)(env_start + i)) < 0) {
-            break; // take care close the loop if env address goes no where
-        }
-        
-        bpf_printk("ENV  %s\n", env_buf);
-
-        if (memcmp(env_buf, SLURM_JOB_USER, SLURM_JOB_USER_LEN) == 0) {
-            char *username = env_buf + 15; // Mojtaba , do not need to use memcp just point to the first char to \0
-            bpf_probe_read_kernel_str(user_home + 6, sizeof(user_home) - 6, username);
-            break;
-        }
-    }
-
+    
     // Read the original filename
     if (bpf_probe_read_str(filename, sizeof(filename), dentry->d_name.name) < 0) {
         return 0;
@@ -169,39 +180,39 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
 
     bpf_printk("Open write from %s it must be written %s\n", filename, user_home);
 
+    // Because of multiple time uses , define some TEMP holders
+    size_t new_filename_s = sizeof(new_filename);
+    size_t user_home_s = __builtin_strlen(user_home);
+    size_t constant_part_s = sizeof(REDIRECTED_DIR)-1;
+
+    __builtin_memset(new_filename, 0, new_filename_s);
+
+    bpf_probe_read_str(new_filename, new_filename_s, user_home);
+
+    if (user_home_s >= new_filename_s) {
+        bpf_printk("Invalid Memory Offset : %s, %s", user_home, new_filename);
+        return 0; // Prevent invalid memory access
+    }
+
+    bpf_probe_read_str(new_filename + user_home_s,
+                        new_filename_s - user_home_s,
+                        REDIRECTED_DIR);
+
+    // Mojtaba , Do not forget to check the positive value of offset because compiler verifier does not allow you to put it freely here :) //
+    size_t user_home_constant = user_home_s + constant_part_s;
+
+    if (user_home_constant >= new_filename_s) {
+        bpf_printk("Invalid Memory Offset : %s, %s", filename, new_filename);
+        return 0; // Prevent invalid memory access
+    }
+
+    bpf_probe_read_str(new_filename + user_home_constant,
+                        (new_filename_s - user_home_constant),
+                        filename);
+
+
     // If the file is outside the home directory, redirect it
-    if (memcmp(filename, user_home, __builtin_strlen(user_home)) != 0) {
-
-        // Because of Multiple use define some TEMP holder here
-        size_t new_filename_s = sizeof(new_filename);
-        size_t user_home_s = __builtin_strlen(user_home);
-        size_t constant_part_s = sizeof(REDIRECTED_DIR)-1;
-
-        __builtin_memset(new_filename, 0, new_filename_s);
-
-        bpf_probe_read_str(new_filename, new_filename_s, user_home);
-
-        if (user_home_s >= new_filename_s) {
-            bpf_printk("Invalid Memory Offset : %s, %s", user_home, new_filename);
-            return 0; // Prevent invalid memory access
-        }
-
-        bpf_probe_read_str(new_filename + user_home_s,
-                           new_filename_s - user_home_s,
-                           REDIRECTED_DIR);
-
-        // Mojtaba , Do not forget to check the positive value of offset because compiler verifier does not allow you to put it freely here :) //
-        size_t user_home_constant = user_home_s + constant_part_s;
-
-        if (user_home_constant >= new_filename_s) {
-            bpf_printk("Invalid Memory Offset : %s, %s", filename, new_filename);
-            return 0; // Prevent invalid memory access
-        }
-
-        bpf_probe_read_str(new_filename + user_home_constant,
-                           (new_filename_s - user_home_constant),
-                           filename);
-
+    if (memcmp(filename, user_home, user_home_s) != 0) {
         // Log redirection
         bpf_printk("Redirecting write from %s to %s\n", filename, new_filename);
 
@@ -216,9 +227,42 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
     return 0; // Allow normal writes
 }
 
+// Mojtaba, Find the ancester parent for the syscalls //
+// Where Syscalls come from //
+static int getAncestorParent(struct task_struct *task){
+    struct task_struct *parent;
+    char comm[TASK_COMM_LEN], p_comm[TASK_COMM_LEN];
+
+    if (!task) return 0;
+
+    bpf_get_current_comm(comm, sizeof(comm));
+
+    
+    parent = task->real_parent;
+    if (parent) {
+        bpf_probe_read_kernel_str(p_comm, sizeof(p_comm), parent->comm);
+    } else {
+        return 0;
+    }
+
+    // Mojtaba,  If parent is a shell or SSH process → USER PROCESS
+    // Every syscalls with shell parent , comes from user otherwise come from daemon 
+    // It covers even admins and root :)
+    if (memcmp(p_comm, PREFIX_BASH, PREFIX_BASH_LEN) == 0 || memcmp(p_comm, PREFIX_ZSH, PREFIX_ZSH_LEN) == 0 || 
+        memcmp(p_comm, PREFIX_SSH, PREFIX_SSH_LEN) == 0 || memcmp(p_comm, PREFIX_FISH, PREFIX_FISH_LEN) == 0) {
+        bpf_printk("User Process Detected: %s (Parent: %s)\n", comm, p_comm);
+        return 1;
+    }
+    else {
+        bpf_printk("Internal Service Detected: %s (Parent: %s)\n", comm, p_comm);
+    }
+
+    return 0;
+}
+
 // I checked out everything and found out we can do it with slurmstepd.scope which is responsible to execute jobs //
 // Slurm jobs come from srun , sbatch which are executed by slurmstepd.scope //
-static bool isSlurmJob(struct task_struct *task) {
+static int getTypeOfProcess(struct task_struct *task) {
     // Find the cgroup of SLURM JOB that is the best idea , otherwise you need check ENV variables which could be more than 10 //
     // Then Per Syscall Call All We Have Too Traverse Between Big Array // Mojtaba :)
 
@@ -287,7 +331,7 @@ static __always_inline bool bpf_detectHarmfulSyscall(void ) {
 
     // Slurm Check Should come from Config file //
     // Probably in next iterations it will be retrieved from configuration files //
-    if(isSlurmJob(task) && SLURM_CHECK){
+    if(getAncestorParent(task)){
         // Check if the process name is "python"
         char comm[TASK_COMM_LEN];
         bpf_get_current_comm(&comm, sizeof(comm));
@@ -295,7 +339,8 @@ static __always_inline bool bpf_detectHarmfulSyscall(void ) {
         // Check if the process name contains "python"
         // NOTICE : Do not use Loop even 5*5 because it is too much   :) Mojtaba
         // Do not use external function , put your function exactlly inline here
-        return checkPrefix(comm)? true: false;
+        //return checkPrefix(comm)? true: false;
+        return true;
     }
 
     return false;

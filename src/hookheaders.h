@@ -46,23 +46,35 @@
 #endif
 
 #ifndef ENV_MAX_SIZE
-    #define ENV_MAX_SIZE 32
+    #define ENV_MAX_SIZE 64
 #endif
 
 #ifndef USR_HOME_DIR_SIZE
     #define USR_HOME_DIR_SIZE 64
 #endif
 
-#ifndef SLURM_CHECK
-    #define SLURM_CHECK true
+#ifndef DIR_SIZE
+    #define DIR_SIZE 64
 #endif
 
 #ifndef HOME_DIR
     #define HOME_DIR "/home/"
 #endif
 
+#ifndef HOME_DIR_LEN
+    #define HOME_DIR_LEN 6
+#endif
+
+#ifndef TMP_DIR
+    #define TMP_DIR "/tmp/"
+#endif
+
+#ifndef TMP_DIR_LEN
+    #define TMP_DIR_LEN 5
+#endif
+
 #ifndef REDIRECTED_DIR
-    #define REDIRECTED_DIR "redirectedFiles/"
+    #define REDIRECTED_DIR "/"
 #endif
 
 #ifndef SLURM_JOB_USER
@@ -71,4 +83,45 @@
 
 #ifndef SLURM_JOB_USER_LEN
     #define SLURM_JOB_USER_LEN 15
+#endif
+
+
+#ifndef SLURM_PROCESS
+    #define SLURM_PROCESS 1
+#endif
+#ifndef SLURM_CHECK
+    #define SLURM_CHECK true
+#endif
+
+#ifndef DOCKER_PROCESS
+    #define DOCKER_PROCESS 2
+#endif
+
+
+#ifndef PREFIX_BASH
+    #define PREFIX_BASH "bash"
+#endif
+#ifndef PREFIX_BASH_LEN
+    #define PREFIX_BASH_LEN 4
+#endif
+
+#ifndef PREFIX_ZSH
+    #define PREFIX_ZSH "zsh"
+#endif
+#ifndef PREFIX_ZSH_LEN
+    #define PREFIX_ZSH_LEN 3
+#endif
+
+#ifndef PREFIX_SSH
+    #define PREFIX_SSH "ssh"
+#endif
+#ifndef PREFIX_SSH_LEN
+    #define PREFIX_SSH_LEN 3
+#endif
+
+#ifndef PREFIX_FISH
+    #define PREFIX_FISH "fish"
+#endif
+#ifndef PREFIX_FISH_LEN
+    #define PREFIX_FISH_LEN 4
 #endif

@@ -17,9 +17,9 @@ SEC("lsm/file_permission")
 int BPF_PROG(hookentry_write, struct file *file, int mask) {
 
     
-    //if(bpf_detectHarmfulSyscall()){
-    //    return -EPERM;
-    //}
+    if(bpf_detectHarmfulSyscall()){
+       return -EPERM;
+    }
 
     // Allow the write operations
     return 0;
@@ -33,9 +33,9 @@ int BPF_PROG(hookentry_open, struct path *dir, struct dentry *dentry, int flags,
     // Put return -EPERM for rejecting any Write // General Role // Mojtaba
     // If you want to put another struct in the flow do not forget to return 0 to let it keeps going // Mojtaba
     
-    if(bpf_detectHarmfulSyscall()){
-        redirectWritingDestinationFile(dir, dentry, flags, mode);
-    }
+    // if(bpf_detectHarmfulSyscall()){
+    //     redirectWritingDestinationFile(dir, dentry, flags, mode);
+    // }
 
     // Allow the write operations
     return 0;
