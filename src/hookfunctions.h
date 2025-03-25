@@ -1,6 +1,10 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
 #define FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
 
+// Mojtaba , Inline min function
+static inline int min(int a, int b) {
+    return a < b ? a : b;
+}
 
 // Mojtaba , instead of using builtin function use this function for comparing anything //
 static int memcmp(const void *s1, const void *s2, __u32 n) {
@@ -22,8 +26,13 @@ static int memcmp(const void *s1, const void *s2, __u32 n) {
 // We do not have this function here 
 // Notice , define MAX_ITR->MIN_ITR so short because of long loop
 static int strcmp(const char *s1, const char *s2) {
-    for (int i = 0; i < MIN_ITR; i++) {
-        char c1, c2;
+    char c1, c2;
+    size_t s1Len=__builtin_strlen(s1);
+    size_t s2Len=__builtin_strlen(s2);
+
+    if(s1Len != s2Len) return 1;
+
+    for (int i = 0; i < s1Len; i++) {
 
         // Read one byte at a time
         bpf_probe_read_kernel(&c1, sizeof(c1), s1 + i);
@@ -32,13 +41,6 @@ static int strcmp(const char *s1, const char *s2) {
         // Compare the characters
         if (c1 != c2) {
             return 1; 
-        }
-
-        if (c1 == '\0' && c2 == '\0') {
-            return 0; // Strings are equal
-        }
-        if (c1 == '\0' || c2 == '\0') {
-            return 1; // Strings are different
         }
     }
 
