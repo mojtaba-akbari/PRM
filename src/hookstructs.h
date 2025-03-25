@@ -19,7 +19,7 @@ struct process_relation {
     [X,X,X] ---> Focus On This pattern (For specific pattern which is knownable)
 */
 #define MAX_RELATION 50 // 50 Roles , if you need more increase it and build project again
-struct process_relation relation_list[MAX_RELATION] = {
+volatile struct process_relation relation_list[MAX_RELATION] = {
     {NULL,PREFIX_BASH,NULL}, // direct hit
     {NULL,PREFIX_FISH,NULL}, // direct hit
     {NULL,PREFIX_SSH,NULL}, // direct hit
