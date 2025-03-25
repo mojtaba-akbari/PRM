@@ -41,6 +41,10 @@
     #define MAX_ITR 256
 #endif
 
+#ifndef MIN_ITR
+    #define MIN_ITR 64
+#endif
+
 #ifndef MAX_DST_ADDRS
     #define MAX_DST_ADDRS 64
 #endif
@@ -97,6 +101,12 @@
     #define DOCKER_PROCESS 2
 #endif
 
+#ifndef PREFIX_PYTHON
+    #define PREFIX_PYTHON "python"
+#endif
+#ifndef PREFIX_PYTHON_LEN
+    #define PREFIX_PYTHON_LEN 6
+#endif
 
 #ifndef PREFIX_BASH
     #define PREFIX_BASH "bash"

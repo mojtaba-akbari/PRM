@@ -1,13 +1,6 @@
-#ifndef BPF_HELPERS_H
-#define BPF_HELPERS_H
+#ifndef FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
+#define FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
 
-static const char PYTHON_PREFIX[] = "python";
-static const int PYTHON_PREFIX_LEN = 6;
-
-static const char BASH_PREFIX[] = "bash";
-static const int BASH_PREFIX_LEN = 4;
-
-static const int PREFIX_NUMBERS=2;
 
 // Mojtaba , instead of using builtin function use this function for comparing anything //
 static int memcmp(const void *s1, const void *s2, __u32 n) {
@@ -23,6 +16,33 @@ static int memcmp(const void *s1, const void *s2, __u32 n) {
     }
 
     return 0;
+}
+
+// Mojtaba , Manual version of __builtin_strcmp 
+// We do not have this function here 
+// Notice , define MAX_ITR->MIN_ITR so short because of long loop
+static int strcmp(const char *s1, const char *s2) {
+    for (int i = 0; i < MIN_ITR; i++) {
+        char c1, c2;
+
+        // Read one byte at a time
+        bpf_probe_read_kernel(&c1, sizeof(c1), s1 + i);
+        bpf_probe_read_kernel(&c2, sizeof(c2), s2 + i);
+
+        // Compare the characters
+        if (c1 != c2) {
+            return 1; 
+        }
+
+        if (c1 == '\0' && c2 == '\0') {
+            return 0; // Strings are equal
+        }
+        if (c1 == '\0' || c2 == '\0') {
+            return 1; // Strings are different
+        }
+    }
+
+    return 0; // Strings are equal
 }
 
 // Mojtaba, Use Function to Return the size of char array //
@@ -232,6 +252,7 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 static int getAncestorParent(){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct task_struct *parent;
+    struct task_struct *grandparent;
     char comm[TASK_COMM_LEN], p_comm[TASK_COMM_LEN], grand_p_comm[TASK_COMM_LEN];
 
     if (!task) return 0;
@@ -246,47 +267,39 @@ static int getAncestorParent(){
         return 0;
     }
 
-    // Mojtaba, sh is tricky because sh is used to for both of internal daemon and user-space
-    // So we need to take care of it
-    if (memcmp(p_comm, PREFIX_SH, PREFIX_SH_LEN) == 0) {
-        // Again check SH Parent
-        struct task_struct *grandparent = parent->real_parent;
-        if (grandparent) {
-            bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
-        } else {
-            return 0;
-        }
-
-        // If "sh" is launched from a shell, treat it as a user process :)
-        // Do not use Goto keywords for jump //
-        if (memcmp(p_comm, PREFIX_BASH, PREFIX_BASH_LEN) == 0 || memcmp(p_comm, PREFIX_ZSH, PREFIX_ZSH_LEN) == 0 || 
-            memcmp(p_comm, PREFIX_SSH, PREFIX_SSH_LEN) == 0 || memcmp(p_comm, PREFIX_FISH, PREFIX_FISH_LEN) == 0) {
-            bpf_printk("User Process Detected: %s (Parent: %s)\n", comm, p_comm);
-            return 1;
-        }
-        else {
-            bpf_printk("Internal Service Detected: %s (Parent: %s) (Grand Parent: %s)\n", comm, p_comm, grand_p_comm);
-        }
+    grandparent = parent->real_parent;
+    // Some times we do not have grand
+    if (!grandparent) {
+        bpf_probe_read_kernel_str(grand_p_comm, sizeof(""), "");
     }
 
-    // Mojtaba,  If parent is a shell or SSH process → USER PROCESS
-    // Every syscalls with shell parent , comes from user otherwise come from daemon 
-    // It covers even admins and root :)
-    if (memcmp(p_comm, PREFIX_BASH, PREFIX_BASH_LEN) == 0 || memcmp(p_comm, PREFIX_ZSH, PREFIX_ZSH_LEN) == 0 || 
-        memcmp(p_comm, PREFIX_SSH, PREFIX_SSH_LEN) == 0 || memcmp(p_comm, PREFIX_FISH, PREFIX_FISH_LEN) == 0) {
-        bpf_printk("User Process Detected: %s (Parent: %s)\n", comm, p_comm);
-        return 1;
+    bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
+
+
+
+    // Mojtaba, Get into roles and find pattern :) ;) I know I know i am best , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , be kind ;)
+    // I customized the if clouse to be readable so put your roles there
+    for (int i = 0; i < MAX_RELATION; i++) {
+        if (
+            (relation_list[i].process == NULL) ? true : strcmp(comm, relation_list[i].process) == 0 &&
+            (relation_list[i].parent == NULL) ? true : strcmp(p_comm, relation_list[i].parent) == 0 &&
+            (relation_list[i].grandparent == NULL) ? true : strcmp(grand_p_comm, relation_list[i].grandparent) == 0
+           ) 
+        {
+            bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (relation_list[i].process == NULL) ? "" : relation_list[i].process , (relation_list[i].parent == NULL) ? "" : relation_list[i].parent, (relation_list[i].grandparent == NULL) ? "" : relation_list[i].grandparent);
+            return 1;  // Process is part of a known hierarchy
+        }
     }
-    else {
-        bpf_printk("Internal Service Detected: %s (Parent: %s)\n", comm, p_comm);
-    }
+    
+
+
 
     return 0;
 }
 
-// I checked out everything and found out we can do it with slurmstepd.scope which is responsible to execute jobs //
-// Slurm jobs come from srun , sbatch which are executed by slurmstepd.scope //
-static int getTypeOfProcess(struct task_struct *task) {
+// Mojtaba, Return cgroup of task 
+// Sometimes i am going to use this cgroup because understanding patterin is difficult
+static char * getTypeOfProcess(struct task_struct *task) {
     // Find the cgroup of SLURM JOB that is the best idea , otherwise you need check ENV variables which could be more than 10 //
     // Then Per Syscall Call All We Have Too Traverse Between Big Array // Mojtaba :)
 
@@ -310,43 +323,11 @@ static int getTypeOfProcess(struct task_struct *task) {
         ret = bpf_probe_read_kernel_str(buffer, sizeof(buffer), cgroup_name);
 
         if (ret > 0) {
-            // Use the custom string comparison function
-            if (__builtin_strcmp(buffer,"slurmstepd.scope") == 0) {
-
-                bpf_printk("Process is part of a SLURM job: %s", buffer);
-
-                return true;
-            }
+            return buffer;
         }
     }
 
     return false;
-}
-
-static bool checkPrefix(const char *str) {
-    // look it up for all Prefix , if in Any prefix it get matched then it is part of our Table //
-    int stageChecker=PREFIX_NUMBERS;
-
-    bpf_printk("Checking Prefix ... :)  %s", str);
-
-    // Phase 1 Checking Prefix , Mojtaba :| Check Prefix to make sure about the process which is running  //
-    // Do not forget checking the String end \0 
-    for (int i = 0; (i < PYTHON_PREFIX_LEN - 1) && (str[i] != '\0'); i++) {
-        if (str[i] != PYTHON_PREFIX[i]) {
-            stageChecker--;
-            break;
-        }
-    }
-
-    // Remove Bash For Now //
-    for (int i = 0; (i < BASH_PREFIX_LEN - 1); i++) {
-        if (str[i] != BASH_PREFIX[i]) {
-            stageChecker--;
-            break;
-        }
-    } 
-
-    return stageChecker==0? false:true; //False means it is not part of our patterns
 }
 
 static __always_inline bool detectHarmfulSyscall() {
@@ -370,4 +351,4 @@ static __always_inline bool detectHarmfulSyscall() {
     return false;
 }
 
-#endif // BPF_HELPERS_H
+#endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
