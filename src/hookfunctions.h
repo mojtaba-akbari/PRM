@@ -158,6 +158,11 @@ static int redirectWritingDestinationFile(struct path *dir, struct dentry *dentr
         // Mojtaba , Do not forget to check the positive value of offset because compiler verifier does not allow you to put it freely here :) //
         size_t user_home_constant = user_home_s + constant_part_s;
 
+        if (user_home_constant >= new_filename_s) {
+            bpf_printk("Invalid Memory Offset : %s, %s", filename, new_filename);
+            return 0; // Prevent invalid memory access
+        }
+
         bpf_probe_read_str(new_filename + user_home_constant,
                            (new_filename_s - user_home_constant),
                            filename);
