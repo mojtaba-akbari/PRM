@@ -341,7 +341,7 @@ static __always_inline bool bpf_detectHarmfulSyscall(void ) {
         // NOTICE : Do not use Loop even 5*5 because it is too much   :) Mojtaba
         // Do not use external function , put your function exactlly inline here
         //return checkPrefix(comm)? true: false;
-        return true;
+        return false;
     }
 
     return false;
