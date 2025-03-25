@@ -27,19 +27,21 @@ struct {
     [NULL,NULL,X] ---> Focus on grand-parent (High focus on Isolation)
     [X,X,X] ---> Focus On This pattern (For specific pattern which is knownable)
 */
-struct process_relation relation_list_static[MAX_RELATION] = {
-    {NULL,PREFIX_BASH,NULL}, // direct hit
-    {NULL,PREFIX_FISH,NULL}, // direct hit
-    {NULL,PREFIX_SSH,NULL}, // direct hit
-    {NULL,PREFIX_ZSH,NULL}, // direct hit
-    {PREFIX_PYTHON, PREFIX_SH, "containerd-shim"}, // isolation level docker
-    {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"}, // isolation level slurm
-    {NULL, NULL, "containerd-shim"}, // High Strict isolation level docker
-    {NULL, NULL, "slurm_script"} // High Strict slurm script level
-    // Add more relationships if needed
-};
+
 
 static void defineProcessRelation(){
+    struct process_relation relation_list_static[] = {
+        {NULL,PREFIX_BASH,NULL}, // direct hit
+        {NULL,PREFIX_FISH,NULL}, // direct hit
+        {NULL,PREFIX_SSH,NULL}, // direct hit
+        {NULL,PREFIX_ZSH,NULL}, // direct hit
+        {PREFIX_PYTHON, PREFIX_SH, "containerd-shim"}, // isolation level docker
+        {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"}, // isolation level slurm
+        {NULL, NULL, "containerd-shim"}, // High Strict isolation level docker
+        {NULL, NULL, "slurm_script"} // High Strict slurm script level
+        // Add more relationships if needed
+    };
+    
     __u32 key = 0;
     bpf_map_update_elem(&relation_map,&key,&relation_list_static,BPF_ANY);
 }
