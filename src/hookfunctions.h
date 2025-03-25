@@ -265,7 +265,7 @@ static int getAncestorParent(){
             return 1;
         }
         else {
-            bpf_printk("Internal Service Detected: %s (Parent: %s)\n", comm, p_comm);
+            bpf_printk("Internal Service Detected: %s (Parent: %s) (Grand Parent: %s)\n", comm, p_comm, grand_p_comm);
         }
     }
 
