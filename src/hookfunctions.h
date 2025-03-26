@@ -187,8 +187,6 @@ static int getAncestorParent(){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-
-
     // Mojtaba, Get into roles and find pattern :) ;)  , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , As always you are Best ;)
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;

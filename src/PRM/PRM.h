@@ -5,21 +5,24 @@
     This Is PRM , Process Relation Map
     Please Avoid To Change Roles If You Did Not Trace The Specific Role
     First Trace With Debug Role Then Add Role Here As Action
-    Do Not Forget To Add Your Role Into PRM And Number of RELATION 
+    Do Not Forget To Add Your Role Into PRM And Number of RELATION
+    If you make your role but forget to add it to PRM , it is suppose not to count
 */
 
 #define MAX_RELATION 8 // Change it if you add roles
 
 
 /* Roles :
-    [NULL,NULL,NULL] ---> EveryThings (Deny Anything)
-    [X,NULL,NULL] ---> Focus on process (More Strict On Process)
-    [X,X,NULL] ---> Focus on process and parent (More Middle User-Space service like bash , zsh , fish , ssh, ...)
-    [X,NULL,X] ---> Focus on process and grand-parent (Any Isolation Level with docker , kvm , ... Restrict to process)
-    [NULL,X,NULL] ---> Focus on parent (High Strict Any process just Parent more focuse on exploits ...)
-    [NULL,X,X] ---> Focus on parent and grand-parent (High Strict Any root Isolation level apptainer , singolarity ...) 
-    [NULL,NULL,X] ---> Focus on grand-parent (High focus on Isolation)
-    [X,X,X] ---> Focus On This pattern (For specific pattern which is knownable)
+    (X) means knownable process, (NULL) means not important or everything or *
+
+    {NULL,NULL,NULL} ---> EveryThings (Deny Anything)
+    {X,NULL,NULL} ---> Focus on process (More Strict On Process)
+    {X,X,NULL} ---> Focus on process and parent (More Middle User-Space service like bash , zsh , fish , ssh, ...)
+    {X,NULL,X} ---> Focus on process and grand-parent (Any Isolation Level with docker , kvm , ... Restrict to process)
+    {NULL,X,NULL} ---> Focus on parent (High Strict Any process just Parent more focuse on exploits ...)
+    {NULL,X,X} ---> Focus on parent and grand-parent (High Strict Any root Isolation level apptainer , singolarity ...) 
+    {NULL,NULL,X} ---> Focus on grand-parent (High focus on Isolation)
+    {X,X,X} ---> Focus On This pattern (For specific pattern which is knownable)
 */
 
 
@@ -41,6 +44,7 @@
 
 // Rendarable Roles //
 #define PRM RELATION_1, \
+            RELATION_2, \
             RELATION_3, \
             RELATION_4, \
             RELATION_5, \
