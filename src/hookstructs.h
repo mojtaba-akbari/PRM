@@ -20,7 +20,16 @@ struct {
 static void loadPRM(){
     bpf_printk("Preparing PRM...");
 
-    const struct process_relation relation_list_static[] = {PRM};
+    const struct process_relation relation_list_static[] = {
+        {NULL,PREFIX_BASH,NULL},
+        {NULL,PREFIX_FISH,NULL},
+        {NULL,PREFIX_SSH,NULL},
+        {NULL,PREFIX_ZSH,NULL},
+        {PREFIX_PYTHON, PREFIX_SH, "containerd-shim"},
+        {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"},
+        {NULL, NULL, "containerd-shim"},
+        {NULL, NULL, "slurm_script"}
+    };
 
     const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
 
