@@ -198,11 +198,11 @@ static int getAncestorParent(){
 
         prm = bpf_map_lookup_elem(&relation_map, &i); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-            condition = ((prm->process == NULL) ? true : strcmp_safe(comm, prm->process)) 
+            condition = ((prm->process == NULL) ? true : !strcmp_safe(comm, prm->process)) 
                 &&
-                ((prm->parent == NULL) ? true : strcmp_safe(p_comm, prm->parent)) 
+                ((prm->parent == NULL) ? true : !strcmp_safe(p_comm, prm->parent)) 
                 &&
-                ((prm->grandparent == NULL) ? true : strcmp_safe(grand_p_comm, prm->grandparent));
+                ((prm->grandparent == NULL) ? true : !strcmp_safe(grand_p_comm, prm->grandparent));
 
             if(condition) 
             {
