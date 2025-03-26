@@ -192,19 +192,19 @@ static int getAncestorParent(){
     // Mojtaba, Get into roles and find pattern :) ;) I know I know i am best , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , be kind ;)
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
+    bool condition=false;
     #pragma unroll
     for (int i = 0; i < MAX_RELATION; i++) {
 
         prm = bpf_map_lookup_elem(&relation_map, &i); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-
-            if (
-                ((prm->process == NULL) ? true : strcmp_safe(comm, prm->process)) 
+            condition = ((prm->process == NULL) ? true : strcmp_safe(comm, prm->process)) 
                 &&
                 ((prm->parent == NULL) ? true : strcmp_safe(p_comm, prm->parent)) 
                 &&
-                ((prm->grandparent == NULL) ? true : strcmp_safe(grand_p_comm, prm->grandparent))
-            ) 
+                ((prm->grandparent == NULL) ? true : strcmp_safe(grand_p_comm, prm->grandparent));
+
+            if(condition) 
             {
                 bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
                 return 1;  // Process is part of a known hierarchy
