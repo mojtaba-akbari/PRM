@@ -1,7 +1,7 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
 #define FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
 // Mojtaba, Deny Any Write OutSide of Home Directory //
-// Check the Mask , Current Directory , And rewrite this part of memory then Let them to Open and Write file // Mojtaba
+// Check the Mask , Current Directory , And rewrite this part of memory then Let them to Open and Write file
 static int denyWritingDestinationFile(struct file *file, int mask){
     struct dentry *dentry = file->f_path.dentry; // Get Destination
     const char *filenameDirectoryAdd = (const char *)dentry->d_name.name; // Get file Directory 

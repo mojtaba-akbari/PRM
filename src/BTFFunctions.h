@@ -4,7 +4,8 @@
     These functions working with Memory and Complexity
     Never Use High Performance Algorithm Here , Use simplest one ,
     Highest Memory Pointer here just points out to 128 Char.
-    Or Will be bound to the Max and Min Direct Access
+    Or Will be bound to the Max and Min Direct Access.
+    Take care of any infinit loop.
 */
 // Mojtaba , Inline min function
 // Inline
@@ -19,7 +20,7 @@ static inline int max(int a, int b) {
 // Mojtaba , memcmp //
 // Take care of read carefully , read dirty
 static int memcmp(const void *s1, const void *s2, __u32 n) {
-    __u8 c1, c2;
+    __u8 c1, c2; // Mojtaba Define as unsinged 8 byte
 
     for (__u32 i = 0; i < n; i++) {
         // Read 1 byte safely from each pointer // Mojtaba , Never compiler verifier does not allow you to use simple //
@@ -35,22 +36,20 @@ static int memcmp(const void *s1, const void *s2, __u32 n) {
 // Mojtaba , strcmp
 // Notice , define MAX_ITR->MIN_ITR so short because of long loop
 static int strcmp(const char *s1, const char *s2) {
-    if(!s1 || !s2) return false;
+    if (!s1 || !s2) return 1;
 
-    char c1, c2;
+    char buf1[MAX_LEN] = {0};
+    char buf2[MAX_LEN] = {0};
+
+    bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1);
+    bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2);
 
     for (int i = 0; i < MAX_LEN; i++) {
-        // Read one byte at a time
-        bpf_probe_read_kernel(&c1, sizeof(c1), s1 + i);
-        bpf_probe_read_kernel(&c2, sizeof(c2), s2 + i);
-
-        // Compare the characters
-        if (c1 != c2) {
-            return 1;
-        }
+        if (buf1[i] != buf2[i]) return 1;
+        if (buf1[i] == '\0') return 0;
     }
 
-    return 0; // Strings are equal
+    return 1;
 }
 // Mojtaba, Strlen //
 // Take care of Stack Memory
