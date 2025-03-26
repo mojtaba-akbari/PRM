@@ -1,96 +1,5 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
 #define FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
-
-// Mojtaba , Inline min function
-static inline int min(int a, int b) {
-    return a < b ? a : b;
-}
-
-// Mojtaba , instead of using builtin function use this function for comparing anything //
-static int memcmp(const void *s1, const void *s2, __u32 n) {
-    __u8 c1, c2;
-
-    for (__u32 i = 0; i < n; i++) {
-        // Read 1 byte safely from each pointer // Mojtaba , Never compiler verifier does not allow you to use simple //
-        // s1[i] != s2[i] because of unbound memory offset
-        if (bpf_probe_read(&c1, sizeof(c1), (const __u8 *)s1 + i) < 0) return 1;
-        if (bpf_probe_read(&c2, sizeof(c2), (const __u8 *)s2 + i) < 0) return 1;
-
-        if (c1 != c2) return 1;
-    }
-
-    return 0;
-}
-
-// Mojtaba , Manual version of __builtin_strcmp 
-// We do not have this function here 
-// Notice , define MAX_ITR->MIN_ITR so short because of long loop
-static int strcmp(const char *s1, const char *s2) {
-    char c1, c2;
-    size_t s1Len=__builtin_strlen(s1);
-    size_t s2Len=__builtin_strlen(s2);
-
-    if(s1Len != s2Len) return 1;
-
-    for (int i = 0; i < s1Len; i++) {
-
-        // Read one byte at a time
-        bpf_probe_read_kernel(&c1, sizeof(c1), s1 + i);
-        bpf_probe_read_kernel(&c2, sizeof(c2), s2 + i);
-
-        // Compare the characters
-        if (c1 != c2) {
-            return 1; 
-        }
-    }
-
-    return 0; // Strings are equal
-}
-
-// Mojtaba, Use Function to Return the size of char array //
-// Take care of Stack Memory // Mojtaba
-static int strlen(const char *str) {
-    int len = 0;
-
-    #pragma unroll // To avoid More Iteration
-    for (int i = 0; i < MAX_LEN; i++) { // Max Len to avoid longer Len
-        char c;
-        if (bpf_probe_read_kernel(&c, sizeof(c), &str[i]) < 0) break;
-        if (c == '\0') break;
-        len++;
-    }
-
-    return len;
-}
-
-// Mojtaba, Try To use __builtin_strcmp function for fix len //
-// If you wanted to find Substr in String use this algorithm // Mojtaba
-static bool strstr(char *str, char *substr){
-    int i,j=0;
-    int str_len= strlen(str);
-    int substr_len= strlen(substr);
-
-    bool innerBreak=true;
-
-    for(;i<=str_len -1; i++){
-        
-        if(str_len - i < substr_len) return false;
-
-        for(j=0; j<=substr_len-1;j++){
-            if(str[i+j] != substr[j]) {
-                innerBreak=false;
-                break;
-            }
-        }
-
-        if(innerBreak) return innerBreak;
-        else innerBreak=true;
-    }
-
-    return false;
-
-}
-
 // Mojtaba, Deny Any Write OutSide of Home Directory //
 // Check the Mask , Current Directory , And rewrite this part of memory then Let them to Open and Write file // Mojtaba
 static int denyWritingDestinationFile(struct file *file, int mask){
@@ -105,12 +14,13 @@ static int denyWritingDestinationFile(struct file *file, int mask){
 
     // Default Directory Path for All Users 
     // Change it if you change in your Linux to /srv or /opt // Mojtaba :) Some Admins Change the user-home directory
-    char userHome[64] = HOME_DIR;
+    char userHome[DIR_SIZE];
+    bpf_probe_read_str(userHome, sizeof(userHome), HOME_DIR);
     bpf_probe_read_kernel_str(userHome + 6, sizeof(userHome) - 6, username);
     bpf_printk("User Directory is : %s File Destination is : %s", userHome, filenameDirectoryAdd);
 
     // If file is outside $HOME, redirect it
-    if (__builtin_memcmp(filenameDirectoryAdd, userHome, strlen(userHome)) != 0) {
+    if (__builtin_memcmp(filenameDirectoryAdd, userHome, __builtin_strlen(userHome)) != 0) {
 
         bpf_printk("Deny writing from %s , User Home is %s\n", filenameDirectoryAdd, userHome);
 
@@ -234,7 +144,7 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 
 
     // If the file is outside the home directory, redirect it
-    if (memcmp(filename, user_home, user_home_s) != 0) {
+    if (__builtin_memcmp(filename, user_home, user_home_s) != 0) {
         // Log redirection
         bpf_printk("Redirecting write from %s to %s\n", filename, new_filename);
 
@@ -287,9 +197,9 @@ static int getAncestorParent(){
         prm = bpf_map_lookup_elem(&relation_map, &i); // Mojtaba , Retreive from user-space memory allocation
         if(prm){
             if (
-                ((prm->process == NULL) ? true : strcmp(comm, prm->process) == 0) &&
-                ((prm->parent == NULL) ? true : strcmp(p_comm, prm->parent) == 0) &&
-                ((prm->grandparent == NULL) ? true : strcmp(grand_p_comm, prm->grandparent) == 0)
+                ((prm->process == NULL) ? true : __builtin_strcmp(comm, prm->process) == 0) &&
+                ((prm->parent == NULL) ? true : __builtin_strcmp(p_comm, prm->parent) == 0) &&
+                ((prm->grandparent == NULL) ? true : __builtin_strcmp(grand_p_comm, prm->grandparent) == 0)
             ) 
             {
                 bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
