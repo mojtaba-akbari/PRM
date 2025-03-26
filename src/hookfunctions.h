@@ -251,13 +251,14 @@ static char * getTypeOfProcess(struct task_struct *task) {
 
 static __always_inline bool detectHarmfulSyscall() {
     // Load Process Relation Table Roles //
-    struct process_relation *relation_list;
+    struct process_relation *relation_0;
     __u32 key = 0; // Static relation list location by key
-    relation_list = bpf_map_lookup_elem(&relation_map, &key);
+    relation_0 = bpf_map_lookup_elem(&relation_map, &key);
 
-    if (!relation_list) {
-        defineProcessRelation();
-        relation_list = bpf_map_lookup_elem(&relation_map, &key);
+    if (!relation_0) {
+        bpf_printk("There is no PRM , I am going to Prepare...");
+        loadPRM();
+        relation_0 = bpf_map_lookup_elem(&relation_map, &key);
         if(!relation_list){
             bpf_printk("Was not able to load PRM");
             return false;

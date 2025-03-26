@@ -17,7 +17,9 @@ struct {
     __type(value, struct process_relation);
 } relation_map SEC(".maps");
 
-static void defineProcessRelation(){
+static void loadPRM(){
+    bpf_printk("Preparing PRM...");
+
     const struct process_relation relation_list_static[] = {PRM};
 
     const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
