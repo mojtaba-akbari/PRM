@@ -192,11 +192,9 @@ static int getAncestorParent(){
     // Mojtaba, Get into roles and find pattern :) ;)  , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , As always you are Best ;)
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
-    __u32 counterConverter=0;
     #pragma unroll
-    for (int i = 0; i < MAX_RELATION; i++) {
-        counterConverter=i; // Mojtaba :) ;)
-        prm = bpf_map_lookup_elem(&relation_map, &counterConverter); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
+    for (__u32 i = 0; i < MAX_RELATION; i++) {
+        prm = bpf_map_lookup_elem(&relation_map, &i); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
             if(
                 ((prm->process == NULL) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))

@@ -32,19 +32,12 @@ struct {
 } relation_map SEC(".maps");
 
 static void defineProcessRelation(){
-    struct process_relation relation_list_static[] = {
-        {NULL,PREFIX_BASH,NULL}, // direct hit
-        {NULL,PREFIX_FISH,NULL}, // direct hit
-        {NULL,PREFIX_SSH,NULL}, // direct hit
-        {NULL,PREFIX_ZSH,NULL}, // direct hit
-        {PREFIX_PYTHON, PREFIX_SH, "containerd-shim"}, // isolation level docker
-        {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"}, // isolation level slurm
-        {NULL, NULL, "containerd-shim"}, // High Strict isolation level docker
-        {NULL, NULL, "slurm_script"} // High Strict slurm script level
-        // Add more relationships if needed
-    };
+    const struct process_relation relation_list_static[] = {PRM};
 
-    for (__u32 i = 0; i < (sizeof(relation_list_static) / sizeof(struct process_relation)); i++) {
+    const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
+
+    #pragma unroll
+    for (__u32 i = 0; i < RELATION_SIZE; i++) {
         bpf_map_update_elem(&relation_map, &i, &relation_list_static[i], BPF_ANY);
     }
 }
