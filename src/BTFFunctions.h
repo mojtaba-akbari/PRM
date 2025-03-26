@@ -52,6 +52,26 @@ static int strcmp(const char *s1, const char *s2) {
 
     return 1;
 }
+// Mojtaba , Safe strcmp :) # Both function are safe the only things is a dirty game which compiler verifier started
+// Because of BTF for strcmp , so i change the name to srtcmp_safe
+// Notice , define MAX_ITR->MIN_ITR so short because of long loop
+static int strcmp_safe(const char *s1, const char *s2) {
+    if (!s1 || !s2) return 1;
+
+    char buf1[MAX_LEN] = {0};
+    char buf2[MAX_LEN] = {0};
+
+    bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1);
+    bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2);
+
+    #pragma unroll
+    for (int i = 0; i < MAX_LEN; i++) {
+        if (buf1[i] != buf2[i]) return 1;
+        if (buf1[i] == '\0') return 0;
+    }
+
+    return 1;
+}
 // Mojtaba, Strlen //
 // Take care of Stack Memory
 static __u32 strlen(const char *str) {
