@@ -264,6 +264,7 @@ static __always_inline bool detectHarmfulSyscall() {
             return false;
         }
     }
+    else bpf_printk("PRM has been loaded up, Role 0 ...{%s,%s,%s}",relation_0->process,relation_0->parent,relation_0->grandparent);
 
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
