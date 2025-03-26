@@ -259,7 +259,7 @@ static __always_inline bool detectHarmfulSyscall() {
         bpf_printk("There is no PRM , I am going to Prepare...");
         loadPRM();
         relation_0 = bpf_map_lookup_elem(&relation_map, &key);
-        if(!relation_list){
+        if(!relation_0){
             bpf_printk("Was not able to load PRM");
             return false;
         }
