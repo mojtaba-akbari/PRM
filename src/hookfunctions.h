@@ -189,24 +189,23 @@ static int getAncestorParent(){
 
     // Mojtaba, Get into roles and find pattern :) ;)  , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , As always you are Best ;)
     // I customized the if clouse to be readable so put your roles there
-    struct process_relation *prm;
     __u32 _safeCounter_=0;
     
     for (__u32 i = 0; i < MAX_RELATION; i++) {
         _safeCounter_=i;
-        prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
-        if(prm){
-            if(
-                ((__builtin_strcmp(prm->process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
-                &&
-                ((__builtin_strcmp(prm->parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false)) 
-                &&
-                ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
-            ) 
-            {
-                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
-                return 1;
-            }
+        if(
+            ((__builtin_strcmp(prm_map[_safeCounter_].process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm_map[_safeCounter_].process) ==0? true : false))
+            &&
+            ((__builtin_strcmp(prm_map[_safeCounter_].parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm_map[_safeCounter_].parent) ==0? true : false)) 
+            &&
+            ((__builtin_strcmp(prm_map[_safeCounter_].grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm_map[_safeCounter_].grandparent) ==0? true : false))
+        ) 
+        {
+            bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , 
+            (prm_map[_safeCounter_].process == NULL) ? "" :prm_map[_safeCounter_].process , 
+            (prm_map[_safeCounter_].parent == NULL) ? "" : prm_map[_safeCounter_].parent, 
+            (prm_map[_safeCounter_].grandparent == NULL) ? "" : prm_map[_safeCounter_].grandparent);
+            return 1;
         }
     }
     

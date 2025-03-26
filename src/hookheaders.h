@@ -42,7 +42,7 @@
 #endif
 
 #ifndef MAX_RELATION_PROCESSNAME
-    #define MAX_RELATION_PROCESSNAME 16
+    #define MAX_RELATION_PROCESSNAME 32
 #endif
 
 #ifndef MAX_ITR

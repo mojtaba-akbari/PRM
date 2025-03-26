@@ -23,6 +23,8 @@ struct process_relation {
     char grandparent[MAX_RELATION_PROCESSNAME];
 };
 
+struct process_relation prm_map[MAX_RELATION] = {PRM};
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, PRM_STATE);
@@ -30,12 +32,6 @@ struct {
     __type(value, struct prm_state);
 } prm_state_map SEC(".maps");
 
-struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, MAX_RELATION);
-    __type(key, __u32);
-    __type(value, struct process_relation);
-} prm_map SEC(".maps");
 
 static void loadPRM(){
     bpf_printk("Preparing PRM...");
@@ -52,18 +48,20 @@ static void loadPRM(){
         {PREFIX_NOCARE, PREFIX_NOCARE, "containerd-shim"},
         {PREFIX_NOCARE, PREFIX_NOCARE, "slurm_script"}
         */
-    const struct process_relation relation_list_static[] = {PRM};
+    //const struct process_relation relation_list_static[] = {PRM};
 
-    const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
+    //const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
 
-    __u32 _safeCounter_ =0;
+    // __u32 _safeCounter_ =0;
     
-    for (__u32 i = 0; i < RELATION_SIZE; i++) {
-        _safeCounter_=i;
+    // for (__u32 i = 0; i < MAX_RELATION; i++) {
+    //     _safeCounter_=i;
+    //     struct process_relation *temp;
+    //     temp = bpf_map_lookup_elem(&prm_map, &_safeCounter_);
 
-        bpf_printk("Load PRM Relations %d.....");
-        bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_list_static[_safeCounter_], BPF_ANY);
-    }
+
+    //     bpf_printk("Load PRM Relations %d..... {%s,%s,%s}...",_safeCounter_,temp->process,temp->parent,temp->grandparent);
+    // }
 
     // Change State
     currect_state.prm_state=LOADED;
