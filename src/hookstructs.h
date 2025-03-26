@@ -35,7 +35,7 @@ struct {
     __uint(max_entries, MAX_RELATION);
     __type(key, __u32);
     __type(value, struct process_relation);
-} prm_map SEC(".maps");
+} prm_map SEC(".rodata");
 
 static void loadPRM(){
     bpf_printk("Preparing PRM...");
@@ -60,7 +60,15 @@ static void loadPRM(){
     
     for (__u32 i = 0; i < RELATION_SIZE; i++) {
         _safeCounter_=i;
-        bpf_printk("Load PRM Relations %d..... {%s,%s,%s} ",_safeCounter_,relation_list_static[_safeCounter_].process,relation_list_static[_safeCounter_].parent,relation_list_static[_safeCounter_].grandparent);
+        char process[16] = {};
+        char parent[16] = {};
+        char grandparent[16] = {};
+
+        bpf_probe_read_kernel_str(process, sizeof(process), relation_list_static[_safeCounter_].process);
+        bpf_probe_read_kernel_str(parent, sizeof(parent), relation_list_static[_safeCounter_].parent);
+        bpf_probe_read_kernel_str(grandparent, sizeof(grandparent), relation_list_static[_safeCounter_].grandparent);
+
+        bpf_printk("Load PRM Relations %d..... {%s,%s,%s} ",_safeCounter_,process,parent,grandparent);
         bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_list_static[_safeCounter_], BPF_ANY);
     }
 
