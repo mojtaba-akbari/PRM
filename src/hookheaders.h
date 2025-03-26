@@ -41,6 +41,10 @@
     #define MAX_LEN 128
 #endif
 
+#ifndef MAX_RELATION_PROCESSNAME
+    #define MAX_RELATION_PROCESSNAME 16
+#endif
+
 #ifndef MAX_ITR
     #define MAX_ITR 256
 #endif
@@ -145,4 +149,11 @@
 #endif
 #ifndef PREFIX_SH_LEN
     #define PREFIX_SH_LEN 2
+#endif
+
+#ifndef PREFIX_NOCARE
+    #define PREFIX_NOCARE "*"
+#endif
+#ifndef PREFIX_NOCARE_LEN
+    #define PREFIX_NOCARE_LEN 1
 #endif

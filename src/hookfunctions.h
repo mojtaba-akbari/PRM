@@ -197,11 +197,11 @@ static int getAncestorParent(){
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
             if(
-                ((prm->process == NULL) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
+                ((__builtin_strcmp(prm->process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
                 &&
-                ((prm->parent == NULL) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false)) 
+                ((__builtin_strcmp(prm->parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false)) 
                 &&
-                ((prm->grandparent == NULL) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
+                ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
             ) 
             {
                 bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
@@ -262,7 +262,6 @@ static __always_inline bool detectHarmfulSyscall() {
         bpf_printk("There is no PRM , I am going to Prepare...");
         loadPRM();
     }
-    else bpf_printk("RPM HAS BEEN LOADED UP");
 
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();

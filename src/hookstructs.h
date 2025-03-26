@@ -18,9 +18,9 @@ struct prm_state {
 };
 
 struct process_relation {
-    char *process;
-    char *parent;
-    char *grandparent;
+    char process[MAX_RELATION_PROCESSNAME];
+    char parent[MAX_RELATION_PROCESSNAME];
+    char grandparent[MAX_RELATION_PROCESSNAME];
 };
 
 struct {
@@ -42,15 +42,15 @@ static void loadPRM(){
     __u32 _index_=0;
     struct prm_state currect_state={STARTUP};
     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
-/*
-       {NULL,PREFIX_BASH,NULL},
-        {NULL,PREFIX_FISH,NULL},
-        {NULL,PREFIX_SSH,NULL},
-        {NULL,PREFIX_ZSH,NULL},
+        /*
+       {PREFIX_NOCARE,PREFIX_BASH,PREFIX_NOCARE},
+        {PREFIX_NOCARE,PREFIX_FISH,PREFIX_NOCARE},
+        {PREFIX_NOCARE,PREFIX_SSH,PREFIX_NOCARE},
+        {PREFIX_NOCARE,PREFIX_ZSH,PREFIX_NOCARE},
         {PREFIX_PYTHON, PREFIX_SH, "containerd-shim"},
         {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"},
-        {NULL, NULL, "containerd-shim"},
-        {NULL, NULL, "slurm_script"}
+        {PREFIX_NOCARE, PREFIX_NOCARE, "containerd-shim"},
+        {PREFIX_NOCARE, PREFIX_NOCARE, "slurm_script"}
         */
     const struct process_relation relation_list_static[] = {PRM};
 
@@ -60,15 +60,8 @@ static void loadPRM(){
     
     for (__u32 i = 0; i < RELATION_SIZE; i++) {
         _safeCounter_=i;
-        char process[16] = {};
-        char parent[16] = {};
-        char grandparent[16] = {};
 
-        bpf_probe_read_kernel_str(process, sizeof(process), relation_list_static[_safeCounter_].process);
-        bpf_probe_read_kernel_str(parent, sizeof(parent), relation_list_static[_safeCounter_].parent);
-        bpf_probe_read_kernel_str(grandparent, sizeof(grandparent), relation_list_static[_safeCounter_].grandparent);
-
-        bpf_printk("Load PRM Relations %d..... {%s,%s,%s} ",_safeCounter_,process,parent,grandparent);
+        bpf_printk("Load PRM Relations %d.....");
         bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_list_static[_safeCounter_], BPF_ANY);
     }
 
