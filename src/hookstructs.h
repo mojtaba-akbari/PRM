@@ -35,7 +35,7 @@ struct {
     __uint(max_entries, MAX_RELATION);
     __type(key, __u32);
     __type(value, struct process_relation);
-} prm_map SEC(".rodata");
+} prm_map SEC(".maps");
 
 static void loadPRM(){
     bpf_printk("Preparing PRM...");
