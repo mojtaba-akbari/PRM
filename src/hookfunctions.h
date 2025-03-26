@@ -198,9 +198,11 @@ static int getAncestorParent(){
         prm = bpf_map_lookup_elem(&relation_map, &i); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
             if (
-                ((prm->process == NULL) ? true : __builtin_strcmp(comm, prm->process) == 0) &&
-                ((prm->parent == NULL) ? true : __builtin_strcmp(p_comm, prm->parent) == 0) &&
-                ((prm->grandparent == NULL) ? true : __builtin_strcmp(grand_p_comm, prm->grandparent) == 0)
+                ((prm->process == NULL) ? true : __builtin_strcmp(comm, prm->process)) 
+                &&
+                ((prm->parent == NULL) ? true : __builtin_strcmp(p_comm, prm->parent)) 
+                &&
+                ((prm->grandparent == NULL) ? true : __builtin_strcmp(grand_p_comm, prm->grandparent))
             ) 
             {
                 bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
