@@ -41,8 +41,8 @@ static int strcmp(const char *s1, const char *s2) {
     char buf1[MAX_LEN] = {0};
     char buf2[MAX_LEN] = {0};
 
-    bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1);
-    bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2);
+    if (bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1) < 0) return 1;
+    if (bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2) < 0) return 1;
 
     #pragma unroll
     for (int i = 0; i < MAX_LEN; i++) {
@@ -61,8 +61,8 @@ static int strcmp_safe(const char *s1, const char *s2) {
     char buf1[MAX_LEN] = {0};
     char buf2[MAX_LEN] = {0};
 
-    bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1);
-    bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2);
+    if (bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1) < 0) return 1;
+    if (bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2) < 0) return 1;
 
     #pragma unroll
     for (int i = 0; i < MAX_LEN; i++) {
