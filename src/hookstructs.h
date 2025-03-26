@@ -36,9 +36,11 @@ static void defineProcessRelation(){
 
     const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
 
+    __u32 _safeCounter_ =0;
     #pragma unroll
     for (__u32 i = 0; i < RELATION_SIZE; i++) {
-        bpf_map_update_elem(&relation_map, &i, &relation_list_static[i], BPF_ANY);
+        _safeCounter_=i;
+        bpf_map_update_elem(&relation_map, &_safeCounter_, &relation_list_static[_safeCounter_], BPF_ANY);
     }
 }
 #endif
