@@ -2,8 +2,21 @@
 #define FILTERING_SYSCALL_FRAMEWORK_STRUCTS
 
 
-// Mojtaba , struct for getting pattern for harmfull chain of execution 
-// I call it PRM Process Relation Map
+// Mojtaba , The Structures // ***
+
+enum PRM_STATE_ENUM {
+    UNLOADED,
+    STARTUP,
+    LOADED,
+    BROKEN,
+    TOO_MANY_ROLES,
+    NON_OF_GENERAL_ROLE
+};
+
+struct prm_state {
+    enum PRM_STATE_ENUM prm_state;
+};
+
 struct process_relation {
     char *process;
     char *parent;
@@ -11,17 +24,23 @@ struct process_relation {
 };
 
 struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, PRM_STATE);
+    __type(key, __u32);
+    __type(value, struct prm_state);
+} prm_state_map SEC(".maps");
+
+struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, MAX_RELATION);
     __type(key, __u32);
     __type(value, struct process_relation);
-} relation_map SEC(".maps");
+} prm_map SEC(".maps");
 
 static void loadPRM(){
     bpf_printk("Preparing PRM...");
-
-    const struct process_relation relation_list_static[] = {
-        {NULL,PREFIX_BASH,NULL},
+/*
+       {NULL,PREFIX_BASH,NULL},
         {NULL,PREFIX_FISH,NULL},
         {NULL,PREFIX_SSH,NULL},
         {NULL,PREFIX_ZSH,NULL},
@@ -29,7 +48,8 @@ static void loadPRM(){
         {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"},
         {NULL, NULL, "containerd-shim"},
         {NULL, NULL, "slurm_script"}
-    };
+        */
+    const struct process_relation relation_list_static[] = {PRM};
 
     const __u32 RELATION_SIZE = sizeof(relation_list_static) / sizeof(struct process_relation);
 
@@ -38,7 +58,12 @@ static void loadPRM(){
     for (__u32 i = 0; i < RELATION_SIZE; i++) {
         _safeCounter_=i;
         bpf_printk("Load PRM Relations %d..... {%s,%s,%s} ",_safeCounter_,relation_list_static[_safeCounter_].process,relation_list_static[_safeCounter_].parent,relation_list_static[_safeCounter_].grandparent);
-        bpf_map_update_elem(&relation_map, &_safeCounter_, &relation_list_static[_safeCounter_], BPF_ANY);
+        bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_list_static[_safeCounter_], BPF_ANY);
     }
+
+    // Change State
+    __u32 _index_=0;
+    struct prm_state currect_state={LOADED};
+    bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 }
 #endif

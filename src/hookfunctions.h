@@ -194,7 +194,7 @@ static int getAncestorParent(){
     
     for (__u32 i = 0; i < MAX_RELATION; i++) {
         _safeCounter_=i;
-        prm = bpf_map_lookup_elem(&relation_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
+        prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
             if(
                 ((prm->process == NULL) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
@@ -251,20 +251,16 @@ static char * getTypeOfProcess(struct task_struct *task) {
 
 static __always_inline bool detectHarmfulSyscall() {
     // Load Process Relation Table Roles //
-    struct process_relation *relation_0;
+    struct prm_state *prm_state;
     __u32 key = 0; // Static relation list location by key
-    relation_0 = bpf_map_lookup_elem(&relation_map, &key);
+    prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
 
-    if (!relation_0) {
-        bpf_printk("There is no PRM , I am going to Prepare...");
-        loadPRM();
-        relation_0 = bpf_map_lookup_elem(&relation_map, &key);
-        if(!relation_0){
-            bpf_printk("Was not able to load PRM");
-            return false;
+    if (!prm_state && prm_state->prm_state == UNLOADED) {
+        if(prm_state->prm_state != LOADED){
+            bpf_printk("There is no PRM , I am going to Prepare...");
+            loadPRM();
         }
     }
-    else bpf_printk("PRM has been loaded up, Role 0 ...{%s,%s,%s}",relation_0->process,relation_0->parent,relation_0->grandparent);
 
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();

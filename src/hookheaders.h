@@ -33,6 +33,10 @@
     #define EINVAL 22
 #endif
 
+#ifndef PRM_STATE
+    #define PRM_STATE 1
+#endif
+
 #ifndef MAX_LEN
     #define MAX_LEN 128
 #endif
