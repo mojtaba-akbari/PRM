@@ -45,7 +45,6 @@ static int strcmp(const char *s1, const char *s2) {
     if (bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1) < 0) return 1;
     if (bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2) < 0) return 1;
 
-    #pragma unroll
     for (int i = 0; i < MAX_LEN; i++) {
         if (buf1[i] != buf2[i]) return 1;
         if (buf1[i] == '\0') return 0;

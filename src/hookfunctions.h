@@ -193,7 +193,7 @@ static int getAncestorParent(){
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
     __u32 _safeCounter_=0;
-    #pragma unroll
+    
     for (__u32 i = 0; i < MAX_RELATION; i++) {
         _safeCounter_=i;
         prm = bpf_map_lookup_elem(&relation_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
@@ -206,8 +206,8 @@ static int getAncestorParent(){
                 ((prm->grandparent == NULL) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
             ) 
             {
-                bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
-                return 1;  // Process is part of a known hierarchy
+                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
+                return 1;
             }
         }
     }
