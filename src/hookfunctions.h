@@ -189,23 +189,22 @@ static int getAncestorParent(){
 
 
 
-    // Mojtaba, Get into roles and find pattern :) ;) I know I know i am best , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , be kind ;)
+    // Mojtaba, Get into roles and find pattern :) ;)  , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , As always you are Best ;)
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
-    bool condition=false;
+    __u32 counterConverter=0;
     #pragma unroll
     for (int i = 0; i < MAX_RELATION; i++) {
-
-        prm = bpf_map_lookup_elem(&relation_map, &i); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
+        counterConverter=i; // Mojtaba :) ;)
+        prm = bpf_map_lookup_elem(&relation_map, &counterConverter); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-            int test=strcmp(comm, prm->process);
-            condition = ((prm->process == NULL) ? true : (strcmp_safe(comm, prm->process) ==0? true : false))
+            if(
+                ((prm->process == NULL) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
                 &&
-                ((prm->parent == NULL) ? true : (strcmp_safe(p_comm, prm->parent) ==0? true : false)) 
+                ((prm->parent == NULL) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false)) 
                 &&
-                ((prm->grandparent == NULL) ? true : (strcmp_safe(grand_p_comm, prm->grandparent) ==0? true : false));
-
-            if(condition) 
+                ((prm->grandparent == NULL) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
+            ) 
             {
                 bpf_printk("Indirect process detected: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
                 return 1;  // Process is part of a known hierarchy
