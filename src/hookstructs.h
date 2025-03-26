@@ -65,7 +65,7 @@ static void loadPRM(){
     }
 
     // Change State
-    currect_state.prm_state={LOADED};
+    currect_state.prm_state=LOADED;
     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 }
 #endif
