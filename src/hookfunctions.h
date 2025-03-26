@@ -254,11 +254,15 @@ static __always_inline bool detectHarmfulSyscall() {
     struct prm_state *prm_state;
     __u32 key = 0; // Static relation list location by key
     prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
-    bpf_printk("Current PRM State ",prm_state->prm_state==UNLOADED?"UNLOADED":"STARTUP");
-    if (prm_state->prm_state != LOADED) {
+    if (!prm_state) {
         bpf_printk("There is no PRM , I am going to Prepare...");
         loadPRM();
     }
+    else if (prm_state->prm_state == UNLOADED){
+        bpf_printk("There is no PRM , I am going to Prepare...");
+        loadPRM();
+    }
+    else bpf_printk("RPM HAS BEEN LOADED UP");
 
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();

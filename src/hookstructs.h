@@ -39,6 +39,9 @@ struct {
 
 static void loadPRM(){
     bpf_printk("Preparing PRM...");
+    __u32 _index_=0;
+    struct prm_state currect_state={STARTUP};
+    bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 /*
        {NULL,PREFIX_BASH,NULL},
         {NULL,PREFIX_FISH,NULL},
@@ -62,7 +65,6 @@ static void loadPRM(){
     }
 
     // Change State
-    __u32 _index_=0;
     struct prm_state currect_state={LOADED};
     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 }
