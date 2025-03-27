@@ -197,12 +197,14 @@ static int getAncestorParent(){
 
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
+            if(_redirectIndex_ > 0 && i < _redirectIndex_) continue;
+
             // Check EMPTY Roles //
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
             if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
             {
-                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
+                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex);
 
                 __u32 mixedUP=1;
                 if(strcmp(prm->process,PREFIX_NOCARE) != 0) mixedUP &= (strcmp(comm, prm->process) ==0);
@@ -224,15 +226,12 @@ static int getAncestorParent(){
                             bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
                             break;
                         case REDIRECT:
-                            if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= 0){
-                                if(_redirectIndex_ > 0){
-                                    i = _redirectIndex_ + 1;
-                                    _redirectIndex_ = -1;
-                                    continue;
+                            if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= i){
+                                if(prm->redirectIndex == i){
+                                    return 0;
                                 }
                                 else{
-                                    _redirectIndex_ = i;
-                                    i=prm->redirectIndex;
+                                    _redirectIndex_ = prm->redirectIndex;
                                     continue;
                                 }
                             }
@@ -249,8 +248,6 @@ static int getAncestorParent(){
         }
     }
     
-
-
 
     return 0;
 }
