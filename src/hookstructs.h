@@ -85,7 +85,7 @@ struct process_relation {
 //                                                             checkPRM_7(comm, p_comm, grand_p_comm) | \ 
 //                                                             checkPRM_8(comm, p_comm, grand_p_comm))
 
-static int checkRelations(const struct process_relation * relation_list_static, __u32 relation_list_static_size, char * comm , char * p_comm, char * grand_p_comm){
+int checkRelations(const struct process_relation * relation_list_static, __u32 relation_list_static_size, char * comm , char * p_comm, char * grand_p_comm){
     bpf_printk("I am going to Check Relations : ", relation_list_static_size);
     for (__u32 i = 0; i < relation_list_static_size; i++) {
         if(
@@ -188,13 +188,13 @@ static int checkPRM_8(char * comm , char * p_comm, char * grand_p_comm){
 static int checkPRM(char * comm , char * p_comm, char * grand_p_comm){
     int result = 0;
     result |= checkPRM_1(comm, p_comm, grand_p_comm);
-    result |= checkPRM_2(comm, p_comm, grand_p_comm);
-    result |= checkPRM_3(comm, p_comm, grand_p_comm);
-    result |= checkPRM_4(comm, p_comm, grand_p_comm);
-    result |= checkPRM_5(comm, p_comm, grand_p_comm);
-    result |= checkPRM_6(comm, p_comm, grand_p_comm);
-    result |= checkPRM_7(comm, p_comm, grand_p_comm);
-    result |= checkPRM_8(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_2(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_3(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_4(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_5(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_6(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_7(comm, p_comm, grand_p_comm);
+    //result |= checkPRM_8(comm, p_comm, grand_p_comm);
     return result;
 }
 
