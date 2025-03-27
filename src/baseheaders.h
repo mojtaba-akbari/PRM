@@ -42,7 +42,7 @@
 #endif
 
 #ifndef EMPTY
-    #define EMPTY 
+    #define EMPTY 0
 #endif
 
 #ifndef MAX_RELATION_PROCESSNAME 
