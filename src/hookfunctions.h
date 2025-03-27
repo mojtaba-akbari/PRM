@@ -187,7 +187,7 @@ static int getAncestorParent(){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-    // Mojtaba, Get into roles and find pattern :) ;)  , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , As always you are Best ;)
+    // Mojtaba, Get into roles
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
     __u32 _safeCounter_=0;
@@ -195,17 +195,19 @@ static int getAncestorParent(){
         _safeCounter_=i;
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-            // if(
-            //     ((__builtin_strcmp(prm->process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
-            //     &&
-            //     ((__builtin_strcmp(prm->parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false)) 
-            //     &&
-            //     ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
-            // ) 
-            // {
+            // Check EMPTY Roles //
+            if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
+
+            __u32 mixedUP=1;
+            mixedUP &= ((__builtin_strcmp(prm->process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false));
+            mixedUP &= ((__builtin_strcmp(prm->parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false));
+            mixedUP &= ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false));
+            
+            if(mixedUP) 
+            {
                 bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
                 return 1;
-            //}
+            }
         }
     }
     
