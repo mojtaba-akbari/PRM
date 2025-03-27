@@ -198,6 +198,8 @@ static int getAncestorParent(){
             // Check EMPTY Roles //
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
+            bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
+
             __u32 mixedUP=1;
             if(strcmp(prm->process,PREFIX_NOCARE) != 0) mixedUP &= (strcmp(comm, prm->process) ==0);
             
@@ -207,7 +209,7 @@ static int getAncestorParent(){
 
             if(mixedUP) 
             {
-                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
+                bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
                 return 1;
             }
         }
