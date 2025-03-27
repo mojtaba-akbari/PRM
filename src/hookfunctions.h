@@ -187,10 +187,30 @@ static int getAncestorParent(){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-    // Mojtaba, Get into roles and find pattern
-    if(checkPRM(comm, p_comm, grand_p_comm) > 0){
-        return 1;
+    // Mojtaba, Get into roles and find pattern :) ;)  , i am joking with you just smile man i wanted to make nice smile for you who is reading this code , As always you are Best ;)
+    // I customized the if clouse to be readable so put your roles there
+    struct process_relation *prm;
+    __u32 _safeCounter_=0;
+    for (__u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
+        _safeCounter_=i;
+        prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
+        if(prm){
+            if(
+                ((__builtin_strcmp(prm->process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false))
+                &&
+                ((__builtin_strcmp(prm->parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false)) 
+                &&
+                ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
+            ) 
+            {
+                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
+                return 1;
+            }
+        }
     }
+    
+
+
 
     return 0;
 }
@@ -230,17 +250,17 @@ static char * getTypeOfProcess(struct task_struct *task) {
 
 static __always_inline bool detectHarmfulSyscall() {
     // Load Process Relation Table Roles //
-    // struct prm_state *prm_state;
-    // __u32 key = 0; // Static relation list location by key
-    // prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
-    // if (!prm_state) {
-    //     bpf_printk("There is no PRM , I am going to Prepare...");
-    //     loadPRM();
-    // }
-    // else if (prm_state->prm_state == UNLOADED){
-    //     bpf_printk("There is no PRM , I am going to Prepare...");
-    //     loadPRM();
-    // }
+    struct prm_state *prm_state;
+    __u32 key = 0; // Static relation list location by key
+    prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
+    if (!prm_state) {
+        bpf_printk("There is no PRM , I am going to Prepare...");
+        Load_PRM();
+    }
+    else if (prm_state->prm_state == UNLOADED){
+        bpf_printk("PRM has been UNLOADED, I am going to load it up...");
+        Load_PRM();
+    }
 
     // Get the current task (process)
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();

@@ -45,10 +45,6 @@
     #define EMPTY 
 #endif
 
-#ifndef MAX_NUMBER_RELATIONS_PER_TABLE
-    #define MAX_NUMBER_RELATIONS_PER_TABLE 5
-#endif
-
 #ifndef MAX_RELATION_PROCESSNAME 
     #define MAX_RELATION_PROCESSNAME 16
 #endif

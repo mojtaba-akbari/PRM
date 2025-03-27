@@ -3,10 +3,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
-#include <hookheaders.h>
+#include <baseheaders.h>
 #include <PRM/PRM.h>
 #include <BTFFunctions.h>
-#include <hookstructs.h>
+#include <PRMstructs.h>
 #include <hookfunctions.h>
 
 

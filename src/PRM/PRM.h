@@ -12,7 +12,7 @@
     Notice: Dynamic Orders , you can use this ability to put your roles depends on different situation and conditions
 */
 
-
+#define MAX_NUMBER_OF_RELATION 50
 
 /* Roles :
     (X) means knownable process, (NULL) means not important or everything or * PREFIX_NOCARE
@@ -27,61 +27,113 @@
     {X,X,X} ---> Focus On This pattern (For specific pattern which is knownable)
 */
 
+// direct hit roles
+#define RELATION_0 PREFIX_BASH,PREFIX_BASH,PREFIX_NOCARE
 
 // direct hit roles
-#define RELATION_1 {PREFIX_NOCARE,PREFIX_BASH,PREFIX_NOCARE}
-#define RELATION_2 {PREFIX_NOCARE,PREFIX_FISH,PREFIX_NOCARE} 
-#define RELATION_3 {PREFIX_NOCARE,PREFIX_SSH,PREFIX_NOCARE}
-#define RELATION_4 {PREFIX_NOCARE,PREFIX_ZSH,PREFIX_NOCARE}
+#define RELATION_1 PREFIX_NOCARE,PREFIX_BASH,PREFIX_NOCARE
+
+#define RELATION_2 PREFIX_NOCARE,PREFIX_FISH,PREFIX_NOCARE
+
+#define RELATION_3 PREFIX_NOCARE,PREFIX_SSH,PREFIX_NOCARE
+
+#define RELATION_4 PREFIX_NOCARE,PREFIX_ZSH,PREFIX_NOCARE
+
 // isolation level docker
-#define RELATION_5 {PREFIX_PYTHON, PREFIX_SH, "containerd-shim"}
+#define RELATION_5 PREFIX_PYTHON, PREFIX_SH, "containerd-shim"
+
 // isolation level slurm
-#define RELATION_6 {PREFIX_PYTHON, PREFIX_BASH, "slurm_script"}
+#define RELATION_6 PREFIX_PYTHON, PREFIX_BASH, "slurm_script"
+
 // High Strict isolation level docker
-#define RELATION_7 {PREFIX_NOCARE, PREFIX_NOCARE, "containerd-shim"}
+#define RELATION_7 PREFIX_NOCARE, PREFIX_NOCARE, "containerd-shim"
+
 // High Strict slurm script level
-#define RELATION_8 {PREFIX_NOCARE, PREFIX_NOCARE, "slurm_script"}
+#define RELATION_8 PREFIX_NOCARE, PREFIX_NOCARE, "slurm_script"
+
 // Focus on bash slurmstepd.scope script level
-#define RELATION_9 {PREFIX_BASH, PREFIX_NOCARE, "slurmstepd.scope"}
+#define RELATION_9 PREFIX_BASH, PREFIX_NOCARE, "slurmstepd.scope"
+
 // High Strict slurmstepd.scope script level
-#define RELATION_10 {PREFIX_NOCARE, PREFIX_NOCARE, "slurmstepd.scope"}
+#define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE, "slurmstepd.scope"
+
 // High Strict kvm level
-#define RELATION_11 {PREFIX_NOCARE, PREFIX_NOCARE, "qumo"}
+#define RELATION_11 PREFIX_NOCARE, PREFIX_NOCARE, "qumo"
 
+#define RELATION_12 EMPTY
 
-// *** Rendarable Roles *** //
+#define RELATION_13 EMPTY
 
-// PRM Table 1 ---> Highest Priority
-#define PRM_1 RELATION_1, \
-            RELATION_2, \
-            RELATION_3, \
-            RELATION_4, \
-            RELATION_5
+#define RELATION_14 EMPTY
 
-// PRM Table 2 
-#define PRM_2 RELATION_6, \
-            RELATION_7, \
-            RELATION_8, \
-            RELATION_9, \
-            RELATION_10
+#define RELATION_15 EMPTY
 
-// PRM Table 3 
-#define PRM_3 RELATION_11
+#define RELATION_16 EMPTY
 
-// PRM Table 4 
-#define PRM_4 EMPTY
+#define RELATION_17 EMPTY
 
-// PRM Table 5 
-#define PRM_5 EMPTY
+#define RELATION_18 EMPTY
 
-// PRM Table 6 
-#define PRM_6 EMPTY
+#define RELATION_19 EMPTY
 
-// PRM Table 7 
-#define PRM_7 EMPTY
+#define RELATION_20 EMPTY
 
-// PRM Table 8 ---> Lowest Priority
-#define PRM_8 EMPTY
+#define RELATION_21 EMPTY
 
+#define RELATION_22 EMPTY
+
+#define RELATION_23 EMPTY
+
+#define RELATION_24 EMPTY
+
+#define RELATION_25 EMPTY
+
+#define RELATION_26 EMPTY
+
+#define RELATION_27 EMPTY
+
+#define RELATION_28 EMPTY
+
+#define RELATION_29 EMPTY
+
+#define RELATION_30 EMPTY
+
+#define RELATION_31 EMPTY
+
+#define RELATION_32 EMPTY
+
+#define RELATION_33 EMPTY
+
+#define RELATION_34 EMPTY
+
+#define RELATION_35 EMPTY
+
+#define RELATION_36 EMPTY
+
+#define RELATION_37 EMPTY
+
+#define RELATION_38 EMPTY
+
+#define RELATION_39 EMPTY
+
+#define RELATION_40 EMPTY
+
+#define RELATION_41 EMPTY
+
+#define RELATION_42 EMPTY
+
+#define RELATION_43 EMPTY
+
+#define RELATION_44 EMPTY
+
+#define RELATION_45 EMPTY
+
+#define RELATION_46 EMPTY
+
+#define RELATION_47 EMPTY
+
+#define RELATION_48 EMPTY
+
+#define RELATION_49 EMPTY
 
 #endif
