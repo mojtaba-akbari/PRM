@@ -199,10 +199,12 @@ static int getAncestorParent(){
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
             __u32 mixedUP=1;
-            mixedUP &= ((__builtin_strcmp(prm->process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, prm->process) ==0? true : false));
-            mixedUP &= ((__builtin_strcmp(prm->parent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(p_comm, prm->parent) ==0? true : false));
-            mixedUP &= ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false));
+            if(__builtin_strcmp(prm->process,PREFIX_NOCARE) != 0) mixedUP &= (__builtin_strcmp(comm, prm->process) ==0);
             
+            if(mixedUP && (__builtin_strcmp(prm->parent, PREFIX_NOCARE) != 0)) mixedUP &=  (__builtin_strcmp(p_comm, prm->parent) ==0);
+
+            if(mixedUP && (__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) != 0)) mixedUP &=  (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0);
+
             if(mixedUP) 
             {
                 bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
