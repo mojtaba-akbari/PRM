@@ -188,7 +188,7 @@ static int getAncestorParent(){
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
     // Mojtaba, Get into roles and find pattern
-    if(CHECK_RELATIONS(comm, p_comm, grand_p_comm)){
+    if(checkPRM(comm, p_comm, grand_p_comm) > 0){
         return 1;
     }
 

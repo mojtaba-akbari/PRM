@@ -76,16 +76,17 @@ struct process_relation {
 //     currect_state.prm_state=LOADED;
 //     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 // }
-#define CHECK_RELATIONS(comm , p_comm, grand_p_comm) (checkPRM_1(comm, p_comm, grand_p_comm) | \
-                                                         checkPRM_2(comm, p_comm, grand_p_comm) | \
-                                                         checkPRM_3(comm, p_comm, grand_p_comm) | \
-                                                         checkPRM_4(comm, p_comm, grand_p_comm) | \
-                                                            checkPRM_5(comm, p_comm, grand_p_comm) | \ 
-                                                            checkPRM_6(comm, p_comm, grand_p_comm) | \ 
-                                                            checkPRM_7(comm, p_comm, grand_p_comm) | \ 
-                                                            checkPRM_8(comm, p_comm, grand_p_comm))
+// #define CHECK_RELATIONS(comm , p_comm, grand_p_comm) (checkPRM_1(comm, p_comm, grand_p_comm) | \
+//                                                          checkPRM_2(comm, p_comm, grand_p_comm) | \
+//                                                          checkPRM_3(comm, p_comm, grand_p_comm) | \
+//                                                          checkPRM_4(comm, p_comm, grand_p_comm) | \
+//                                                             checkPRM_5(comm, p_comm, grand_p_comm) | \ 
+//                                                             checkPRM_6(comm, p_comm, grand_p_comm) | \ 
+//                                                             checkPRM_7(comm, p_comm, grand_p_comm) | \ 
+//                                                             checkPRM_8(comm, p_comm, grand_p_comm))
 
 static int checkRelations(const struct process_relation * relation_list_static, __u32 relation_list_static_size, char * comm , char * p_comm, char * grand_p_comm){
+    bpf_printk("I am going to Check Relations : ", relation_list_static_size);
     for (__u32 i = 0; i < relation_list_static_size; i++) {
         if(
             ((__builtin_strcmp(relation_list_static[i].process,PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(comm, relation_list_static[i].process) ==0? true : false))
@@ -182,6 +183,19 @@ static int checkPRM_8(char * comm , char * p_comm, char * grand_p_comm){
     #else
         return 0;
     #endif
+}
+
+static int checkPRM(char * comm , char * p_comm, char * grand_p_comm){
+    int result = 0;
+    result |= checkPRM_1(comm, p_comm, grand_p_comm);
+    result |= checkPRM_2(comm, p_comm, grand_p_comm);
+    result |= checkPRM_3(comm, p_comm, grand_p_comm);
+    result |= checkPRM_4(comm, p_comm, grand_p_comm);
+    result |= checkPRM_5(comm, p_comm, grand_p_comm);
+    result |= checkPRM_6(comm, p_comm, grand_p_comm);
+    result |= checkPRM_7(comm, p_comm, grand_p_comm);
+    result |= checkPRM_8(comm, p_comm, grand_p_comm);
+    return result;
 }
 
 #endif
