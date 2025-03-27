@@ -3,13 +3,15 @@
 
 /*  Mojtaba, 
     This Is PRM , Process Relation Map
-    Please Avoid To Change Roles If You Did Not Trace The Specific Role
-    First Trace With Debug Role Then Add Role Here As Action
-    Do Not Forget To Add Your Role Into PRM And Number of RELATION
-    If you make your role but forget to add it to PRM , it is suppose not to count
+
+    PRM Table Page Size ---> 5 * Process Relation
+    Number Of PRM Tables ---> 1 - 8 (Ordered) (If you want to check order faster put it by order --- it improves our performance)
+    Process Relation Names ---> 16 * Byte (extra bytes are eliminated)
+    
+    Notice: Without enough tracing never add roles !!!
+    Notice: Dynamic Orders , you can use this ability to put your roles depends on different situation and conditions
 */
 
-#define MAX_RELATION 8 // Change it if you add roles
 
 
 /* Roles :
@@ -39,18 +41,47 @@
 #define RELATION_7 {PREFIX_NOCARE, PREFIX_NOCARE, "containerd-shim"}
 // High Strict slurm script level
 #define RELATION_8 {PREFIX_NOCARE, PREFIX_NOCARE, "slurm_script"}
+// Focus on bash slurmstepd.scope script level
+#define RELATION_9 {PREFIX_BASH, PREFIX_NOCARE, "slurmstepd.scope"}
+// High Strict slurmstepd.scope script level
+#define RELATION_10 {PREFIX_NOCARE, PREFIX_NOCARE, "slurmstepd.scope"}
+// High Strict kvm level
+#define RELATION_11 {PREFIX_NOCARE, PREFIX_NOCARE, "qumo"}
 
 
+// *** Rendarable Roles *** //
 
-// Rendarable Roles //
-#define PRM RELATION_1, \
+// PRM Table 1 ---> Highest Priority
+#define PRM_1 RELATION_1, \
             RELATION_2, \
             RELATION_3, \
             RELATION_4, \
-            RELATION_5, \
-            RELATION_6, \
+            RELATION_5
+
+// PRM Table 2 
+#define PRM_2 RELATION_6, \
             RELATION_7, \
             RELATION_8, \
+            RELATION_9, \
+            RELATION_10
+
+// PRM Table 3 
+#define PRM_3 RELATION_11
+
+// PRM Table 4 
+#define PRM_4 EMPTY
+
+// PRM Table 5 
+#define PRM_5 EMPTY
+
+// PRM Table 6 
+#define PRM_6 EMPTY
+
+// PRM Table 7 
+#define PRM_7 EMPTY
+
+// PRM Table 8 ---> Lowest Priority
+#define PRM_8 EMPTY
 
 
 #endif

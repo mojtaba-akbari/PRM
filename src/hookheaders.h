@@ -41,8 +41,16 @@
     #define MAX_LEN 128
 #endif
 
-#ifndef MAX_RELATION_PROCESSNAME
-    #define MAX_RELATION_PROCESSNAME 32
+#ifndef EMPTY
+    #define EMPTY 
+#endif
+
+#ifndef MAX_NUMBER_RELATIONS_PER_TABLE
+    #define MAX_NUMBER_RELATIONS_PER_TABLE 5
+#endif
+
+#ifndef MAX_RELATION_PROCESSNAME 
+    #define MAX_RELATION_PROCESSNAME 16
 #endif
 
 #ifndef MAX_ITR
@@ -157,3 +165,7 @@
 #ifndef PREFIX_NOCARE_LEN
     #define PREFIX_NOCARE_LEN 1
 #endif
+
+
+// MACRO PREPROCESSOR //
+#define IS_NUMERIC(x) (0 * x + 0)
