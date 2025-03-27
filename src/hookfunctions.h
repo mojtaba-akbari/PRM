@@ -191,40 +191,59 @@ static int getAncestorParent(){
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
     __u32 _safeCounter_=0;
+    int _redirectIndex_=-1;
     for (__u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
+
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
             // Check EMPTY Roles //
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
-            bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
-
-            __u32 mixedUP=1;
-            if(strcmp(prm->process,PREFIX_NOCARE) != 0) mixedUP &= (strcmp(comm, prm->process) ==0);
-            
-            if(mixedUP && (strcmp(prm->parent, PREFIX_NOCARE) != 0)) mixedUP &=  (strcmp(p_comm, prm->parent) ==0);
-
-            if(mixedUP && (strcmp(prm->grandparent, PREFIX_NOCARE) != 0)) mixedUP &=  (strcmp(grand_p_comm, prm->grandparent) ==0);
-
-            if(mixedUP) 
+            if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
             {
-                bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action);
-                switch (prm->action)
+                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
+
+                __u32 mixedUP=1;
+                if(strcmp(prm->process,PREFIX_NOCARE) != 0) mixedUP &= (strcmp(comm, prm->process) ==0);
+                
+                if(mixedUP && (strcmp(prm->parent, PREFIX_NOCARE) != 0)) mixedUP &=  (strcmp(p_comm, prm->parent) ==0);
+
+                if(mixedUP && (strcmp(prm->grandparent, PREFIX_NOCARE) != 0)) mixedUP &=  (strcmp(grand_p_comm, prm->grandparent) ==0);
+
+                if(mixedUP) 
                 {
-                    case REJECT:
-                        return 1;
-                    case ACCEPT:
-                        return 0;
-                    case DEBUG:
-                        bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action);
-                        break;
-                    case REDIRECT:
-                        return 1;
-                        break;
-                    case RETURN:
-                        return 1;
-                        break;
+                    bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
+                    switch (prm->action)
+                    {
+                        case REJECT:
+                            return 1;
+                        case ACCEPT:
+                            return 0;
+                        case DEBUG:
+                            bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
+                            break;
+                        case REDIRECT:
+                            if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= 0){
+                                if(_redirectIndex_ > 0){
+                                    i = _redirectIndex_ + 1;
+                                    _redirectIndex_ = -1;
+                                    continue;
+                                }
+                                else{
+                                    _redirectIndex_ = i;
+                                    i=prm->redirectIndex;
+                                    continue;
+                                }
+                            }
+                            else {
+                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
+                            }
+                            break;
+                        case RETURN:
+                            return 1;
+                            break;
+                    }
                 }
             }
         }

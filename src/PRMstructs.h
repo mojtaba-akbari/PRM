@@ -33,6 +33,8 @@ struct process_relation {
     char parent[MAX_RELATION_PROCESSNAME];
     char grandparent[MAX_RELATION_PROCESSNAME];
     enum PROCESS_RELATION_ACTION_ENUM action;
+    int redirectIndex;
+    bool protectZone;
 };
 
 struct {
@@ -55,7 +57,7 @@ struct {
     static int insert_chunk_##i(void) {   \
         __u32 key = i;                      \
         struct process_relation relation = {RELATION_##i}; \
-        bpf_printk("Inserted into map: %s -> %s -> %s -> %d\n", relation.process, relation.parent, relation.grandparent, relation.action); \
+        bpf_printk("Inserted into map: %s -> %s -> %s -> %d -> %d -> %d\n", relation.process, relation.parent, relation.grandparent, relation.action, relation.redirectIndex, relation.protectZone); \
         bpf_map_update_elem(&prm_map, &key, &relation, BPF_ANY); \
         return 0;                          \
     }
