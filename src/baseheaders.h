@@ -135,7 +135,7 @@
 #endif
 
 #ifndef PREFIX_SSH
-    #define PREFIX_SSH "ssh"
+    #define PREFIX_SSH "sshd"
 #endif
 #ifndef PREFIX_SSH_LEN
     #define PREFIX_SSH_LEN 3

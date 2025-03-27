@@ -27,42 +27,42 @@
     {X,X,X} ---> Focus On This pattern (For specific pattern which is knownable)
 */
 
-// direct hit roles
-#define RELATION_0 PREFIX_BASH,PREFIX_BASH,PREFIX_NOCARE
+// Super Direct hit roles
+#define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT
 
-// direct hit roles
-#define RELATION_1 PREFIX_NOCARE,PREFIX_BASH,PREFIX_NOCARE
+// High Direct hit roles
+#define RELATION_1 PREFIX_BASH, PREFIX_SSH ,PREFIX_NOCARE ,REJECT
 
-#define RELATION_2 PREFIX_NOCARE,PREFIX_FISH,PREFIX_NOCARE
+#define RELATION_2 PREFIX_FISH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT
 
-#define RELATION_3 PREFIX_NOCARE,PREFIX_SSH,PREFIX_NOCARE
+#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REJECT
 
-#define RELATION_4 PREFIX_NOCARE,PREFIX_ZSH,PREFIX_NOCARE
+#define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT
 
-// isolation level docker
-#define RELATION_5 PREFIX_PYTHON, PREFIX_SH, "containerd-shim"
+// Super Indirect hit roles
+#define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,REJECT
 
-// isolation level slurm
-#define RELATION_6 PREFIX_PYTHON, PREFIX_BASH, "slurm_script"
+#define RELATION_6 PREFIX_NOCARE, PREFIX_FISH ,PREFIX_NOCARE ,REJECT
 
-// High Strict isolation level docker
-#define RELATION_7 PREFIX_NOCARE, PREFIX_NOCARE, "containerd-shim"
+#define RELATION_7 PREFIX_NOCARE, PREFIX_ZSH ,PREFIX_NOCARE ,REJECT
 
-// High Strict slurm script level
-#define RELATION_8 PREFIX_NOCARE, PREFIX_NOCARE, "slurm_script"
+// Focus on python slurmstepd script level
+#define RELATION_8 PREFIX_PYTHON, PREFIX_NOCARE ,"slurmstepd" ,REJECT
 
-// Focus on bash slurmstepd.scope script level
-#define RELATION_9 PREFIX_BASH, PREFIX_NOCARE, "slurmstepd.scope"
+// Focus on bash slurmstepd script level
+#define RELATION_9 PREFIX_BASH, PREFIX_NOCARE ,"slurmstepd" ,REJECT
 
-// High Strict slurmstepd.scope script level
-#define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE, "slurmstepd.scope"
+// High Strict slurmstepd script level
+#define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE ,"slurmstepd" ,REJECT
 
-// High Strict kvm level
-#define RELATION_11 PREFIX_NOCARE, PREFIX_NOCARE, "qumo"
+// Focus on runc (--run) containerd-shim
+#define RELATION_11 "runc", "containerd-shim" ,PREFIX_NOCARE ,REJECT
 
-#define RELATION_12 EMPTY
+// High Strict on containerd-shim
+#define RELATION_12 PREFIX_PYTHON, "containerd-shim" , PREFIX_NOCARE ,REJECT
 
-#define RELATION_13 EMPTY
+// High Strict on containerd-shim
+#define RELATION_13 PREFIX_NOCARE, "containerd-shim" ,"systemd" ,REJECT
 
 #define RELATION_14 EMPTY
 

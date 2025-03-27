@@ -209,8 +209,23 @@ static int getAncestorParent(){
 
             if(mixedUP) 
             {
-                bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
-                return 1;
+                bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action);
+                switch (prm->action)
+                {
+                    case REJECT:
+                        return 1;
+                    case ACCEPT:
+                        return 0;
+                    case DEBUG:
+                        bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action);
+                        break;
+                    case REDIRECT:
+                        return 1;
+                        break;
+                    case RETURN:
+                        return 1;
+                        break;
+                }
             }
         }
     }

@@ -20,10 +20,19 @@ struct prm_state {
     enum PRM_STATE_ENUM prm_state;
 };
 
+enum PROCESS_RELATION_ACTION_ENUM{
+    ACCEPT,
+    REJECT,
+    REDIRECT,
+    DEBUG,
+    RETURN
+};
+
 struct process_relation {
     char process[MAX_RELATION_PROCESSNAME];
     char parent[MAX_RELATION_PROCESSNAME];
     char grandparent[MAX_RELATION_PROCESSNAME];
+    enum PROCESS_RELATION_ACTION_ENUM action;
 };
 
 struct {
@@ -46,7 +55,7 @@ struct {
     static int insert_chunk_##i(void) {   \
         __u32 key = i;                      \
         struct process_relation relation = {RELATION_##i}; \
-        bpf_printk("Inserted into map: %s -> %s -> %s\n", relation.process, relation.parent, relation.grandparent); \
+        bpf_printk("Inserted into map: %s -> %s -> %s -> %d\n", relation.process, relation.parent, relation.grandparent, relation.action); \
         bpf_map_update_elem(&prm_map, &key, &relation, BPF_ANY); \
         return 0;                          \
     }
