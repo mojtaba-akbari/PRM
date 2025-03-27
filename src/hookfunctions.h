@@ -203,7 +203,7 @@ static int getAncestorParent(){
             //     ((__builtin_strcmp(prm->grandparent, PREFIX_NOCARE) == 0) ? true : (__builtin_strcmp(grand_p_comm, prm->grandparent) ==0? true : false))
             // ) 
             // {
-                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , (prm->process == NULL) ? "" : prm->process , (prm->parent == NULL) ? "" : prm->parent, (prm->grandparent == NULL) ? "" : prm->grandparent);
+                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent);
                 return 1;
             //}
         }

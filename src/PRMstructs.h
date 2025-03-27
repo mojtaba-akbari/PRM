@@ -46,6 +46,7 @@ struct {
     static int insert_chunk_##i(void) {   \
         __u32 key = i;                      \
         struct process_relation relation = {RELATION_##i}; \
+        bpf_printk("Inserted into map: %s -> %s -> %s\n", relation.process, relation.parent, relation.grandparent); \
         bpf_map_update_elem(&prm_map, &key, &relation, BPF_ANY); \
         return 0;                          \
     }
@@ -103,56 +104,56 @@ struct {
     DEFINE_LOAD_RELATION_FUNCTION(49);   \
 
 #define CALL_RELATION_FUNCTIONS()      \
-    insert_chunk_0;    \
-    insert_chunk_1;    \
-    insert_chunk_2;    \
-    insert_chunk_3;    \
-    insert_chunk_4;    \
-    insert_chunk_5;    \
-    insert_chunk_6;    \
-    insert_chunk_7;    \
-    insert_chunk_8;    \
-    insert_chunk_9;    \
-    insert_chunk_10;   \
-    insert_chunk_11;    \
-    insert_chunk_12;    \
-    insert_chunk_13;    \
-    insert_chunk_14;    \
-    insert_chunk_15;    \
-    insert_chunk_16;    \
-    insert_chunk_17;    \
-    insert_chunk_18;    \
-    insert_chunk_19;    \
-    insert_chunk_20;    \
-    insert_chunk_21;   \
-    insert_chunk_22;    \
-    insert_chunk_23;    \
-    insert_chunk_24;    \
-    insert_chunk_25;    \
-    insert_chunk_26;    \
-    insert_chunk_27;    \
-    insert_chunk_28;    \
-    insert_chunk_29;    \
-    insert_chunk_30;    \
-    insert_chunk_31;    \
-    insert_chunk_32;   \
-    insert_chunk_33;    \
-    insert_chunk_34;    \
-    insert_chunk_35;    \
-    insert_chunk_36;    \
-    insert_chunk_37;    \
-    insert_chunk_38;    \
-    insert_chunk_39;    \
-    insert_chunk_40;    \
-    insert_chunk_41;    \
-    insert_chunk_42;    \
-    insert_chunk_43;   \
-    insert_chunk_44;    \
-    insert_chunk_45;    \
-    insert_chunk_46;    \
-    insert_chunk_47;   \
-    insert_chunk_48;    \
-    insert_chunk_49;    \
+    insert_chunk_0();    \
+    insert_chunk_1();    \
+    insert_chunk_2();    \
+    insert_chunk_3();    \
+    insert_chunk_4();    \
+    insert_chunk_5();    \
+    insert_chunk_6();    \
+    insert_chunk_7();    \
+    insert_chunk_8();    \
+    insert_chunk_9();    \
+    insert_chunk_10();   \
+    insert_chunk_11();    \
+    insert_chunk_12();    \
+    insert_chunk_13();    \
+    insert_chunk_14();    \
+    insert_chunk_15();    \
+    insert_chunk_16();    \
+    insert_chunk_17();    \
+    insert_chunk_18();    \
+    insert_chunk_19();    \
+    insert_chunk_20();    \
+    insert_chunk_21();   \
+    insert_chunk_22();    \
+    insert_chunk_23();    \
+    insert_chunk_24();    \
+    insert_chunk_25();    \
+    insert_chunk_26();    \
+    insert_chunk_27();    \
+    insert_chunk_28();    \
+    insert_chunk_29();    \
+    insert_chunk_30();    \
+    insert_chunk_31();    \
+    insert_chunk_32();   \
+    insert_chunk_33();    \
+    insert_chunk_34();    \
+    insert_chunk_35();    \
+    insert_chunk_36();    \
+    insert_chunk_37();    \
+    insert_chunk_38();    \
+    insert_chunk_39();    \
+    insert_chunk_40();    \
+    insert_chunk_41();    \
+    insert_chunk_42();    \
+    insert_chunk_43();   \
+    insert_chunk_44();    \
+    insert_chunk_45();    \
+    insert_chunk_46();    \
+    insert_chunk_47();   \
+    insert_chunk_48();    \
+    insert_chunk_49();    \
 
 #if defined(GENERATE_LOAD_FUNCTIONS)
     GENERATE_LOAD_FUNCTIONS()
@@ -162,8 +163,6 @@ struct {
 static int GENERATE_LOAD_FUNCTIONS_STATIC_FUNCTION(){
     #if defined(_GENERATED_) && _GENERATED_ == 1
         CALL_RELATION_FUNCTIONS()
-    #else
-        assert(1==1, "PRM FUNCTIONS LOAD CORRUPTED");
     #endif
 
     return 0;
