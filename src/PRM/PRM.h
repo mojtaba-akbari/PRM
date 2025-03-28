@@ -12,19 +12,39 @@
     Notice: Dynamic Orders , you can use this ability to put your roles depends on different situation and conditions
 */
 
-#define MAX_NUMBER_OF_RELATION 50
+#define MAX_NUMBER_OF_RELATION 80
 
-/* Roles :
+/* Structure:
+    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1)
+    Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
+            Protected zone flag true(1) never checks
+
+   Roles :
     (X) means knownable process, (NULL) means not important or everything or * PREFIX_NOCARE
 
     {PREFIX_NOCARE,PREFIX_NOCARE,PREFIX_NOCARE} ---> EveryThings (Deny Anything)
+
     {X,PREFIX_NOCARE,PREFIX_NOCARE} ---> Focus on process (More Strict On Process)
+
     {X,X,PREFIX_NOCARE} ---> Focus on process and parent (More Middle User-Space service like bash , zsh , fish , ssh, ...)
+
     {X,PREFIX_NOCARE,X} ---> Focus on process and grand-parent (Any Isolation Level with docker , kvm , ... Restrict to process)
+
     {PREFIX_NOCARE,X,PREFIX_NOCARE} ---> Focus on parent (High Strict Any process just Parent more focuse on exploits ...)
+
     {PREFIX_NOCARE,X,X} ---> Focus on parent and grand-parent (High Strict Any root Isolation level apptainer , singolarity ...) 
+
     {PREFIX_NOCARE,PREFIX_NOCARE,X} ---> Focus on grand-parent (High focus on Isolation)
+    
     {X,X,X} ---> Focus On This pattern (For specific pattern which is knownable)
+
+   Actions :
+    ACCEPT, ---> Accept Matched Syscall
+    REJECT, ---> Reject Matched Syscall
+    REDIRECT, ---> Redirect to another role , * it (must) be higher than current role index , otherwise Redirect on current index causes Syscall being accepted
+    DEBUG, ---> Debug every thing
+    RETURN ---> 
+
 */
 
 // Super Direct hit roles
@@ -126,13 +146,73 @@
 
 #define RELATION_45 EMPTY
 
-// Docker Protect Zone , Focus More To Strict it
-#define RELATION_46 "runc", "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1
+#define RELATION_46 EMPTY
 
-#define RELATION_47 PREFIX_PYTHON, "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1
+#define RELATION_47 EMPTY
 
-#define RELATION_48 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,12 ,1
+#define RELATION_48 EMPTY
 
 #define RELATION_49 EMPTY
+
+// Docker Protect Zone , Focus More To Strict it
+#define RELATION_50 "runc", "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1
+
+#define RELATION_51 PREFIX_PYTHON, "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1
+
+#define RELATION_52 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,52 ,1
+
+#define RELATION_53 EMPTY
+
+#define RELATION_54 EMPTY
+
+#define RELATION_55 EMPTY
+
+#define RELATION_56 EMPTY
+
+#define RELATION_57 EMPTY
+
+#define RELATION_58 EMPTY
+
+#define RELATION_59 EMPTY
+
+#define RELATION_60 EMPTY
+
+#define RELATION_61 EMPTY
+
+#define RELATION_62 EMPTY
+
+#define RELATION_63 EMPTY
+
+#define RELATION_64 EMPTY
+
+#define RELATION_65 EMPTY
+
+#define RELATION_66 EMPTY
+
+#define RELATION_67 EMPTY
+
+#define RELATION_68 EMPTY
+
+#define RELATION_69 EMPTY
+
+#define RELATION_70 EMPTY
+
+#define RELATION_71 EMPTY
+
+#define RELATION_72 EMPTY
+
+#define RELATION_73 EMPTY
+
+#define RELATION_74 EMPTY
+
+#define RELATION_75 EMPTY
+
+#define RELATION_76 EMPTY
+
+#define RELATION_77 EMPTY
+
+#define RELATION_78 EMPTY
+
+#define RELATION_79 EMPTY
 
 #endif

@@ -2,10 +2,12 @@
 #define FILTERING_SYSCALL_FRAMEWORK_STRUCTS
 
 
-// Mojtaba , The Structures // ***
+// Mojtaba :) , The Structures // ***
 // Use Stack Programming To Design The Whole PRM //
 // Stack Is Faster Than BFP Helper Calls For Allocating Data //
 // Here The Structure Is Between 512 Byte Allocation , So I Would Prefer Develop It As Stack //
+
+static volatile __u8 map_loaded = 0;
 
 enum PRM_STATE_ENUM {
     UNLOADED,
@@ -37,13 +39,94 @@ struct process_relation {
     bool protectZone;
 };
 
+const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata") = {
+    {RELATION_1},
+    {RELATION_2},
+    {RELATION_3},
+    {RELATION_4},
+    {RELATION_5},
+    {RELATION_6},
+    {RELATION_7},
+    {RELATION_8},
+    {RELATION_9},
+    {RELATION_10},
+    {RELATION_11},
+    {RELATION_12},
+    {RELATION_13},
+    {RELATION_14},
+    {RELATION_15},
+    {RELATION_16},
+    {RELATION_17},
+    {RELATION_18},
+    {RELATION_19},
+    {RELATION_20},
+    {RELATION_21},
+    {RELATION_22},
+    {RELATION_23},
+    {RELATION_24},
+    {RELATION_25},
+    {RELATION_26},
+    {RELATION_27},
+    {RELATION_28},
+    {RELATION_29},
+    {RELATION_30},
+    {RELATION_31},
+    {RELATION_32},
+    {RELATION_33},
+    {RELATION_34},
+    {RELATION_35},
+    {RELATION_36},
+    {RELATION_37},
+    {RELATION_38},
+    {RELATION_39},
+    {RELATION_40},
+    {RELATION_41},
+    {RELATION_42},
+    {RELATION_43},
+    {RELATION_44},
+    {RELATION_45},
+    {RELATION_46},
+    {RELATION_47},
+    {RELATION_48},
+    {RELATION_49},
+    {RELATION_50},
+    {RELATION_51},
+    {RELATION_52},
+    {RELATION_53},
+    {RELATION_54},
+    {RELATION_55},
+    {RELATION_56},
+    {RELATION_57},
+    {RELATION_58},
+    {RELATION_59},
+    {RELATION_60},
+    {RELATION_61},
+    {RELATION_62},
+    {RELATION_63},
+    {RELATION_64},
+    {RELATION_65},
+    {RELATION_66},
+    {RELATION_67},
+    {RELATION_68},
+    {RELATION_69},
+    {RELATION_70},
+    {RELATION_71},
+    {RELATION_72},
+    {RELATION_73},
+    {RELATION_74},
+    {RELATION_75},
+    {RELATION_76},
+    {RELATION_77},
+    {RELATION_78},
+    {RELATION_79}
+};
+
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, MAX_NUMBER_OF_RELATION);
     __type(key, u32);
     __type(value, struct process_relation);
 } prm_map SEC(".maps");
-
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -52,7 +135,6 @@ struct {
     __type(value, struct prm_state);
 } prm_state_map SEC(".maps");
 
-// Macro to generate function to insert an element into the map
 #define DEFINE_LOAD_RELATION_FUNCTION(i)  \
     static int insert_chunk_##i(void) {   \
         __u32 key = i;                      \
@@ -113,6 +195,36 @@ struct {
     DEFINE_LOAD_RELATION_FUNCTION(47);   \
     DEFINE_LOAD_RELATION_FUNCTION(48);   \
     DEFINE_LOAD_RELATION_FUNCTION(49);   \
+    DEFINE_LOAD_RELATION_FUNCTION(50);   \
+    DEFINE_LOAD_RELATION_FUNCTION(51);   \
+    DEFINE_LOAD_RELATION_FUNCTION(52);   \
+    DEFINE_LOAD_RELATION_FUNCTION(53);   \
+    DEFINE_LOAD_RELATION_FUNCTION(54);   \
+    DEFINE_LOAD_RELATION_FUNCTION(55);   \
+    DEFINE_LOAD_RELATION_FUNCTION(56);   \
+    DEFINE_LOAD_RELATION_FUNCTION(57);   \
+    DEFINE_LOAD_RELATION_FUNCTION(58);   \
+    DEFINE_LOAD_RELATION_FUNCTION(59);   \
+    DEFINE_LOAD_RELATION_FUNCTION(60);   \
+    DEFINE_LOAD_RELATION_FUNCTION(61);   \
+    DEFINE_LOAD_RELATION_FUNCTION(62);   \
+    DEFINE_LOAD_RELATION_FUNCTION(63);   \
+    DEFINE_LOAD_RELATION_FUNCTION(64);   \
+    DEFINE_LOAD_RELATION_FUNCTION(65);   \
+    DEFINE_LOAD_RELATION_FUNCTION(66);   \
+    DEFINE_LOAD_RELATION_FUNCTION(67);   \
+    DEFINE_LOAD_RELATION_FUNCTION(68);   \
+    DEFINE_LOAD_RELATION_FUNCTION(69);   \
+    DEFINE_LOAD_RELATION_FUNCTION(70);   \
+    DEFINE_LOAD_RELATION_FUNCTION(71);   \
+    DEFINE_LOAD_RELATION_FUNCTION(72);   \
+    DEFINE_LOAD_RELATION_FUNCTION(73);   \
+    DEFINE_LOAD_RELATION_FUNCTION(74);   \
+    DEFINE_LOAD_RELATION_FUNCTION(75);   \
+    DEFINE_LOAD_RELATION_FUNCTION(76);   \
+    DEFINE_LOAD_RELATION_FUNCTION(77);   \
+    DEFINE_LOAD_RELATION_FUNCTION(78);   \
+    DEFINE_LOAD_RELATION_FUNCTION(79);   \
 
 #define CALL_RELATION_FUNCTIONS()      \
     insert_chunk_0();    \
@@ -165,6 +277,36 @@ struct {
     insert_chunk_47();   \
     insert_chunk_48();    \
     insert_chunk_49();    \
+    insert_chunk_50();    \
+    insert_chunk_51();   \
+    insert_chunk_52();    \
+    insert_chunk_53();    \
+    insert_chunk_54();    \
+    insert_chunk_55();    \
+    insert_chunk_56();    \
+    insert_chunk_57();    \
+    insert_chunk_58();    \
+    insert_chunk_59();    \
+    insert_chunk_60();    \
+    insert_chunk_61();    \
+    insert_chunk_62();   \
+    insert_chunk_63();    \
+    insert_chunk_64();    \
+    insert_chunk_65();    \
+    insert_chunk_66();    \
+    insert_chunk_67();    \
+    insert_chunk_68();    \
+    insert_chunk_69();    \
+    insert_chunk_70();    \
+    insert_chunk_71();    \
+    insert_chunk_72();    \
+    insert_chunk_73();   \
+    insert_chunk_74();    \
+    insert_chunk_75();    \
+    insert_chunk_76();    \
+    insert_chunk_77();   \
+    insert_chunk_78();    \
+    insert_chunk_79();    \
 
 #if defined(GENERATE_LOAD_FUNCTIONS)
     GENERATE_LOAD_FUNCTIONS()
@@ -179,13 +321,23 @@ static int GENERATE_LOAD_FUNCTIONS_STATIC_FUNCTION(){
     return 0;
 }
 
+static void init_relation_map() {
+    __u32 _safeCounter_=0;
+    #pragma unroll
+    for (int i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
+        _safeCounter_=i;
+        bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_data[_safeCounter_], BPF_ANY);
+    }
+}
+
 static void Load_PRM(){
     bpf_printk("Preparing PRM...");
     __u32 _index_=0;
     struct prm_state currect_state={STARTUP};
     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 
-    GENERATE_LOAD_FUNCTIONS_STATIC_FUNCTION();
+    //GENERATE_LOAD_FUNCTIONS_STATIC_FUNCTION();
+    init_relation_map();
 
     // Change State
     currect_state.prm_state=LOADED;

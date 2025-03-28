@@ -204,7 +204,7 @@ static int getAncestorParent(){
 
             if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
             {
-                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex);
+                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone);
 
                 __u32 mixedUP=1;
                 if(strcmp(prm->process,PREFIX_NOCARE) != 0) mixedUP &= (strcmp(comm, prm->process) ==0);
@@ -215,7 +215,7 @@ static int getAncestorParent(){
 
                 if(mixedUP) 
                 {
-                    bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
+                    bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                     switch (prm->action)
                     {
                         case REJECT:
@@ -223,7 +223,7 @@ static int getAncestorParent(){
                         case ACCEPT:
                             return 0;
                         case DEBUG:
-                            bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
+                            bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             break;
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= i){
@@ -236,7 +236,7 @@ static int getAncestorParent(){
                                 }
                             }
                             else {
-                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex);
+                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             }
                             break;
                         case RETURN:
