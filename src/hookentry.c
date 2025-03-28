@@ -6,8 +6,9 @@
 #include <BTFFunctions.h>
 #include <baseheaders.h>
 #include <PRM/PRM.h>
-#include <PRM/PRMprog.h>
+#include <PRM/PRMProg.h>
 #include <PRM/PRMProgEntry.h>
+#include <PRM/PRMProgDispatcher.h>
 #include <PRM/PRMstructs.h>
 #include <PRM/PRMengine.h>
 

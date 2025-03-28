@@ -153,7 +153,7 @@ static int PRMVerifier(void *ctx){
                             }
                             break;
                         case RETURN:
-                            bpf_tail_call(ctx,&prm_prog_array,prm->redirectIndex);
+                            PRM_PROG_Dispatcher(prm->redirectIndex);
                             break;
                     }
                 }

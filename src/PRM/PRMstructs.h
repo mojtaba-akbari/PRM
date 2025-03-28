@@ -134,17 +134,6 @@ struct {
     __type(value, struct prm_state);
 } prm_state_map SEC(".maps");
 
-struct {
-    __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-    __uint(max_entries, 32);
-    __type(key, __u32);
-    __type(value, __u32);
-} prm_prog_array SEC(".maps");
-
-static const void * prm_prog_static[32] SEC("rodata") = {
-    PRM_PROGS
-};
-
 static void init_relation_map() {
     bpf_printk("Preparing PRM Relation Map...");
     __u32 _safeCounter_=0;
@@ -155,26 +144,14 @@ static void init_relation_map() {
     }
 }
 
-static void init_prm_prog_map() {
-    bpf_printk("Preparing PRM Progs Map...");
-    __u32 _safeCounter_=0;
-    #pragma unroll
-    for (int i = 0; i < 32; i++) {
-        _safeCounter_=i;
-        bpf_map_update_elem(&prm_prog_array, &_safeCounter_, &prm_prog_static[_safeCounter_], BPF_ANY);
-    }
-}
-
 static void Load_PRM(){
     bpf_printk("Preparing PRM...");
     __u32 _index_=0;
     struct prm_state currect_state={STARTUP};
     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 
-    //GENERATE_LOAD_FUNCTIONS_STATIC_FUNCTION();
     init_relation_map();
 
-    // Change State
     currect_state.prm_state=LOADED;
     bpf_map_update_elem(&prm_state_map, &_index_, &currect_state, BPF_ANY);
 }
