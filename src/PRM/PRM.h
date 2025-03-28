@@ -15,7 +15,7 @@
 #define MAX_NUMBER_OF_RELATION 80
 
 /* Structure:
-    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1)
+    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Syscall-Numbers(0-N)
     Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
             Protected zone flag true(1) never checks
 
@@ -48,37 +48,37 @@
 */
 
 // Super Direct hit roles
-#define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,0
+#define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,0 ,0
 
 // High Direct hit roles
-#define RELATION_1 PREFIX_BASH, PREFIX_SSH ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_1 PREFIX_BASH, PREFIX_SSH ,PREFIX_NOCARE ,REJECT ,0 ,0 ,0
 
-#define RELATION_2 PREFIX_FISH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_2 PREFIX_FISH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT ,0 ,0 ,0
 
-#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REJECT ,0 ,0
+#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REJECT ,0 ,0 ,0
 
-#define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT ,0 ,0 ,0
 
 // Super Indirect hit roles
-#define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,REJECT ,0 ,0 ,0
 
-#define RELATION_6 PREFIX_NOCARE, PREFIX_FISH ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_6 PREFIX_NOCARE, PREFIX_FISH ,PREFIX_NOCARE ,REJECT ,0 ,0 ,0
 
-#define RELATION_7 PREFIX_NOCARE, PREFIX_ZSH ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_7 PREFIX_NOCARE, PREFIX_ZSH ,PREFIX_NOCARE ,REJECT ,0 ,0 ,0
 
 // Focus on python slurmstepd script level
-#define RELATION_8 PREFIX_PYTHON, PREFIX_NOCARE ,"slurmstepd" ,REJECT ,0 ,0
+#define RELATION_8 PREFIX_PYTHON, PREFIX_NOCARE ,"slurmstepd" ,REJECT ,0 ,0 ,0
 
 // Focus on bash slurmstepd script level
-#define RELATION_9 PREFIX_BASH, PREFIX_NOCARE ,"slurmstepd" ,REJECT ,0 ,0
+#define RELATION_9 PREFIX_BASH, PREFIX_NOCARE ,"slurmstepd" ,REJECT ,0 ,0 ,0
 
 // High Strict slurmstepd script level
-#define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE ,"slurmstepd" ,REJECT ,0 ,0
+#define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE ,"slurmstepd" ,REJECT ,0 ,0 ,0
 
 // If Found Any containerd - docker Redirect To Docker Zone
-#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,46 ,0
+#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,46 ,0 ,0
 
-#define RELATION_12 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SH ,REJECT ,0 ,0
+#define RELATION_12 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SH ,REJECT ,0 ,0 ,0
 
 #define RELATION_13 EMPTY
 
@@ -155,11 +155,11 @@
 #define RELATION_49 EMPTY
 
 // Docker Protect Zone , Focus More To Strict it
-#define RELATION_50 "runc", "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1
+#define RELATION_50 "runc", "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1 ,0
 
-#define RELATION_51 PREFIX_PYTHON, "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1
+#define RELATION_51 PREFIX_PYTHON, "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1 ,0
 
-#define RELATION_52 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,52 ,1
+#define RELATION_52 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,52 ,1 ,0
 
 #define RELATION_53 EMPTY
 

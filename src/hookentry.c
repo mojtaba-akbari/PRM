@@ -10,89 +10,125 @@
 #include <PRM/PRMProgEntry.h>
 #include <PRM/PRMProgDispatcher.h>
 #include <PRM/PRMstructs.h>
-#include <PRM/PRMengine.h>
+#include <PRM/PRMVerifier.h>
 
 
 
 char _license[] SEC("license") = "GPL";
 
-// Put return -EPERM for rejecting any Write // General Role // Mojtaba
-// If you want to put another struct in the flow do not forget to return 0 to let it keeps going // Mojtaba
+// Mojtaba, The Hook Entry Point //
+// Mojtaba, Have Some Fun Times In This Framework //
 
-// Write ----> STDOUT, File, Pipe //
-// Mojtaba, In permission you can not change any struct because it is just deny or allow //
+// Any kind of permission like +r //
+// Target-> bypass file access controls //
 SEC("lsm/file_permission")
-int BPF_PROG(hookentry_write, struct file *file, int mask) {
-
-    
-    // if(detectHarmfulSyscall()){
-    //    return -EPERM;
-    // }
-
-    // Allow the write operations
-    return 0;
+int BPF_PROG(monitor_permission, struct file *file, int mask) {
+    return entryStartPoint(FILE_PERMISSION);
 }
 
-// Any Write Open File Redirected To Home Directory //
-// Mojtaba, At the opening time you are able to change the open struct //
+// Create file , +w , +ow //
+// Target->  This hook is triggered when an inode (essentially, a file) is created //
 SEC("lsm/inode_create")
-int BPF_PROG(hookentry_open, struct path *dir, struct dentry *dentry, int flags, umode_t mode)
-{
-    // Put return -EPERM for rejecting any Write // General Role // Mojtaba
-    // If you want to put another struct in the flow do not forget to return 0 to let it keeps going // Mojtaba
-    
-    if(detectSyscallRelations(ctx)){
-        //redirectWritingDestinationFile(dir, dentry, flags, mode);
-        return -1;
-    }
-
-    // Allow the write operations
-    return 0;
+int BPF_PROG(monitor_inode_create, struct path *dir, struct dentry *dentry, int flags, umode_t mode){
+    return entryStartPoint(INODE_CREATE);
 }
 
-// SEC("lsm/bprm_check_security")
-// int BPF_PROG(deny_execve, struct linux_binprm *bprm) {
-//     return -EPERM; // Deny execve
-// }
+// Open or Create any kind of process //
+// Target -> This hook is triggered when a new process is created //
+SEC("lsm/process_init")
+int BPF_PROG(monitor_process, struct task_struct *task) {
+    return entryStartPoint(PROCESS_INIT);
+}
 
-// // LSM hook for file open
-// SEC("lsm/file_open")
-// int BPF_PROG(deny_open, struct file *file) {
-//     return -EPERM; // Deny open
-// }
+// Change the P, G id in the process //
+// Target -> This hook checks when a process changes its process group ID (PGID) //
+SEC("lsm/task_setpgid")
+int BPF_PROG(monitor_pgid, struct task_struct *task, pid_t pgid) {
+    return entryStartPoint(TASK_SETPGID);
+}
 
-// // LSM hook for socket creation
-// SEC("lsm/socket_create")
-// int BPF_PROG(deny_socket, int family, int type, int protocol) {
-//     return -EPERM; // Deny socket
-// }
+// Modify Syslog messages //
+// Target -> you can monitor or block attempts to write to system logs //
+SEC("lsm/syslog")
+int BPF_PROG(monitor_syslog, int type, char *buf, int len) {
+    return entryStartPoint(SYSLOG);
+}
 
-// // LSM hook for socket connect
-// SEC("lsm/socket_connect")
-// int BPF_PROG(deny_connect, struct socket *sock, struct sockaddr *address, int addrlen) {
-//     return -EPERM; // Deny connect
-// }
+// Socket creation //
+// Target -> Monitor creating socket //
+SEC("lsm/socket_create")
+int BPF_PROG(monitor_socket_create, int family, int type, int protocol) {
+    return entryStartPoint(SOCKET_CREATE);
+}
 
-// // LSM hook for clone
-// SEC("lsm/task_alloc")
-// int BPF_PROG(deny_clone, struct task_struct *task, unsigned long clone_flags) {
-//     return -EPERM; // Deny clone
-// }
+// Socket connect //
+// Target -> Monitor the end host of socket //
+SEC("lsm/socket_connect")
+int BPF_PROG(monitor_socket_connect, struct socket *sock, struct sockaddr *address, int addrlen) {
+    return entryStartPoint(SOCKET_CONNECT);
+}
 
-// // LSM hook for fork
-// SEC("lsm/task_fork")
-// int BPF_PROG(deny_fork, struct task_struct *task) {
-//     return -EPERM; // Deny fork
-// }
+// Opening child or light process //
+// Target -> Monitor the execve function //
+// *** It is the root case of any attacks //
+SEC("lsm/execve")
+int BPF_PROG(monitor_execve, const char *filename, struct task_struct *task) {
+    return entryStartPoint(EXECVE);
+}
 
-// // LSM hook for kill
-// SEC("lsm/task_kill")
-// int BPF_PROG(deny_kill, struct task_struct *task, struct kernel_siginfo *info, int sig) {
-//     return -EPERM; // Deny kill
-// }
+// BPF //
+// Target -> Self-Attack , Try to monitor BPF //
+SEC("lsm/bpf")
+int BPF_PROG(monitor_bpf, struct bpf_prog *prog) {
+    return entryStartPoint(BPF);
+}
 
-// // LSM hook for ptrace
-// SEC("lsm/task_ptrace")
-// int BPF_PROG(deny_ptrace, struct task_struct *task, long request) {
-//     return -EPERM; // Deny ptrace
-// }
+// Open file or folder //
+// Target -> open critical file like /etc/shadow //
+SEC("lsm/open")
+int BPF_PROG(monitor_open, struct file *file) {
+    return entryStartPoint(OPEN);
+}
+
+// Cap Get //
+// Target -> This hook is invoked when capabilities are retrieved for a process //
+SEC("lsm/security_capget")
+int BPF_PROG(monitor_capget, struct task_struct *task, struct __user_cap_header_struct *header, struct __user_cap_data_struct *data) {
+    return entryStartPoint(SECURITY_CAPGET);
+}
+
+
+// Mount //
+// Target -> Open Mount devices //
+SEC("lsm/mount")
+int BPF_PROG(monitor_mount, struct path *path, char *dev_name) {
+    return entryStartPoint(MOUNT);
+}
+
+// Kill //
+// Target -> Try to kill defences ;) :) // Nothing can escape from me :)
+SEC("lsm/task_kill")
+int BPF_PROG(monitor_task_kill, struct task_struct *task) {
+    return entryStartPoint(TASK_KILL);
+}
+
+// Clone //
+// Target -> Clone from current process //
+SEC("lsm/task_alloc")
+int BPF_PROG(monitor_clone, struct task_struct *task, unsigned long clone_flags) {
+    return entryStartPoint(TASK_ALLOC);
+}
+
+// Fork //
+// Target -> Fork //
+SEC("lsm/task_fork")
+int BPF_PROG(monitor_fork, struct task_struct *task) {
+    return entryStartPoint(TASK_FORK);
+}
+
+// Ptrace //
+// Target -> Target Ptrace process //
+SEC("lsm/task_ptrace")
+int BPF_PROG(monitor_ptrace, struct task_struct *task, long request) {
+    return entryStartPoint(TASK_PTRACE);
+}

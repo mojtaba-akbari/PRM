@@ -59,7 +59,7 @@ static void retreiveENVfromTask(struct task_struct * task, char * env, int env_l
 
     //     if (bpf_probe_read_str(env_buf, sizeof(env_buf), (void *)(env_start + i)) < 0) {
     //         break; // take care close the loop if env address goes no where
-    //     }
+    //     }__u32
         
     //     bpf_printk("ENV  %s\n", env_buf);
 
@@ -71,11 +71,10 @@ static void retreiveENVfromTask(struct task_struct * task, char * env, int env_l
     // }
 }
 
-// Mojtaba, Find the ancester parent for the syscalls //
-// Where Syscalls come from //
-// Pass CTX //
-static int PRMVerifier(void *ctx){
+// Mojtaba, Verifier //
+static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
+    struct thread_info *tinfo = &task->thread_info;
     struct task_struct *parent;
     struct task_struct *grandparent;
     char comm[TASK_COMM_LEN], p_comm[TASK_COMM_LEN], grand_p_comm[TASK_COMM_LEN];
@@ -100,6 +99,8 @@ static int PRMVerifier(void *ctx){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
+    bpf_printk("***Syscalls Come from: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm);
+
     // Mojtaba, Get into roles
     // I customized the if clouse to be readable so put your roles there
     struct process_relation *prm;
@@ -110,14 +111,18 @@ static int PRMVerifier(void *ctx){
 
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
+            
             if(_redirectIndex_ > 0 && i < _redirectIndex_) continue;
 
             // Check EMPTY Roles //
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
+            // Check The Syscall number //
+            if((prm->syscallNumber != hook_enum) && (prm->syscallNumber != NONE_CELL)) continue;
+
             if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
             {
-                bpf_printk("Syscall Comes From: %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone);
+                bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone);
 
                 __u32 mixedUP=1;
                 if(strcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (strcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
@@ -128,7 +133,7 @@ static int PRMVerifier(void *ctx){
 
                 if(mixedUP) 
                 {
-                    bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                    bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                     switch (prm->action)
                     {
                         case REJECT:
@@ -136,7 +141,7 @@ static int PRMVerifier(void *ctx){
                         case ACCEPT:
                             return 0;
                         case DEBUG:
-                            bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                            bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             break;
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= i){
@@ -149,7 +154,7 @@ static int PRMVerifier(void *ctx){
                                 }
                             }
                             else {
-                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             }
                             break;
                         case RETURN:
@@ -166,7 +171,7 @@ static int PRMVerifier(void *ctx){
 }
 
 // Mojtaba , define as inline
-static __always_inline bool detectSyscallRelations(void * ctx) {
+static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum) {
     // Load Process Relation Table Roles //
     struct prm_state *prm_state;
     __u32 key = 0; // Static relation list location by key
@@ -180,7 +185,17 @@ static __always_inline bool detectSyscallRelations(void * ctx) {
         Load_PRM();
     }
 
-    PRMVerifier(ctx);
+    return PRMVerifier(hook_enum);
+}
+
+static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
+
+    if(detectSyscallRelations(hook_enum)){
+        return -EPERM;
+    }
+
+    // Allow the write operations
+    return 0;
 }
 
 #endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H

@@ -124,9 +124,7 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 }
 
 static int testProg(){
-    char comm[TASK_COMM_LEN];
-    bpf_get_current_comm(comm, sizeof(comm));
-    bpf_printk("testProg return 0 %s\n",comm);
+    bpf_printk("___PROG___TEST__BRANCH___\n");
     return 0;
 }
 #endif

@@ -7,6 +7,26 @@
 // Stack Is Faster Than BFP Helper Calls For Allocating Data //
 // Here The Structure Is Between 512 Byte Allocation , So I Would Prefer Develop It As Stack //
 
+enum PRM_HOOK_ENUM{
+    NONE_CELL, // ---> Mimic From Kernel Index 0 Always Nothing
+    FILE_PERMISSION,
+    INODE_CREATE,
+    PROCESS_INIT,
+    TASK_SETPGID,
+    SYSLOG,
+    SOCKET_CREATE,
+    SOCKET_CONNECT,
+    EXECVE,
+    BPF,
+    OPEN,
+    SECURITY_CAPGET,
+    MOUNT,
+    TASK_KILL,
+    TASK_ALLOC,
+    TASK_FORK,
+    TASK_PTRACE
+};
+
 enum PRM_STATE_ENUM {
     UNLOADED,
     STARTUP,
@@ -35,6 +55,7 @@ struct process_relation {
     enum PROCESS_RELATION_ACTION_ENUM action;
     int redirectIndex;
     bool protectZone;
+    enum PRM_HOOK_ENUM syscallNumber;
 };
 
 const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata") = {
