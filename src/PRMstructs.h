@@ -40,6 +40,7 @@ struct process_relation {
 };
 
 const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata") = {
+    {RELATION_0},
     {RELATION_1},
     {RELATION_2},
     {RELATION_3},
