@@ -3,11 +3,14 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <BTFFunctions.h>
 #include <baseheaders.h>
 #include <PRM/PRM.h>
-#include <BTFFunctions.h>
-#include <PRMstructs.h>
-#include <hookfunctions.h>
+#include <PRM/PRMprog.h>
+#include <PRM/PRMProgEntry.h>
+#include <PRM/PRMstructs.h>
+#include <PRM/PRMengine.h>
+
 
 
 char _license[] SEC("license") = "GPL";
@@ -37,7 +40,7 @@ int BPF_PROG(hookentry_open, struct path *dir, struct dentry *dentry, int flags,
     // Put return -EPERM for rejecting any Write // General Role // Mojtaba
     // If you want to put another struct in the flow do not forget to return 0 to let it keeps going // Mojtaba
     
-    if(detectHarmfulSyscall()){
+    if(detectSyscallRelations(ctx)){
         //redirectWritingDestinationFile(dir, dentry, flags, mode);
         return -1;
     }

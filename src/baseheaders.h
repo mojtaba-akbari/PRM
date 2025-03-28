@@ -101,7 +101,6 @@
     #define SLURM_JOB_USER_LEN 15
 #endif
 
-
 #ifndef SLURM_PROCESS
     #define SLURM_PROCESS 1
 #endif

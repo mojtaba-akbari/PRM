@@ -20,7 +20,7 @@ static inline int max(int a, int b) {
 }
 // Mojtaba , memcmp //
 // Take care of read carefully , read dirty
-static int memcmp(const void *s1, const void *s2, __u32 n) {
+static int memcmp(const void *s1, const void *s2, const __u32 n) {
     __u8 c1, c2; // Mojtaba Define as unsinged 8 byte
 
     for (__u32 i = 0; i < n; i++) {
@@ -36,42 +36,38 @@ static int memcmp(const void *s1, const void *s2, __u32 n) {
 }
 // Mojtaba , strcmp
 // Notice , define MAX_ITR->MIN_ITR so short because of long loop
-static int strcmp(const char *s1, const char *s2) {
-    if (!s1 || !s2) return 1;
-
-    char buf1[MAX_LEN] = {0};
-    char buf2[MAX_LEN] = {0};
-
-    if (bpf_probe_read_kernel_str(buf1, sizeof(buf1), s1) < 0) return 1;
-    if (bpf_probe_read_kernel_str(buf2, sizeof(buf2), s2) < 0) return 1;
+static int strcmp(const char *s1, const char *s2, const __u32 len) {
+    char c1, c2;
 
     #pragma unroll
-    for (int i = 0; i < MAX_LEN; i++) {
-        if (buf1[i] != buf2[i]) return 1;
-        if (buf1[i] == '\0') return 0;
-    }
+    for (int i = 0; i < len; i++) {
+        if (bpf_probe_read_kernel(&c1, sizeof(c1), s1 + i) < 0) return 1;
+        if (bpf_probe_read_kernel(&c2, sizeof(c2), s2 + i) < 0) return 1;
 
+        if (c1 != c2) return 1;
+        if (c1 == '\0' && c2 == '\0') return 0;
+    }
     return 0;
 }
 // Mojtaba, Strlen //
 // Take care of Stack Memory
-static __u32 strlen(const char *str) {
-    __u32 len = 0;
+static __u32 strlen(const char *str, const __u32 len) {
+    __u32 lenCounter = 0;
     char c;
-    while (len < MAX_LEN) { 
-        bpf_probe_read_kernel(&c, sizeof(c), str + len);
+    while (lenCounter < len) { 
+        bpf_probe_read_kernel(&c, sizeof(c), str + lenCounter);
         if (c == '\0') break;
-        len++;
+        lenCounter++;
     }
 
-    return len;
+    return lenCounter;
 }
 // Mojtaba, Strstr , contains //
 // Take care of out of bound memory
-static bool strstr(char *str, char *substr){
+static bool strstr(const char *str, const char *substr, const __u32 len){
     int i,j=0;
-    int str_len= __builtin_strlen(str);
-    int substr_len= __builtin_strlen(substr);
+    int str_len= strlen(str,len);
+    int substr_len= strlen(substr,len);
 
     bool innerBreak=true;
 

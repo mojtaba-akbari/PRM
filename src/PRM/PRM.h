@@ -42,13 +42,13 @@
     ACCEPT, ---> Accept Matched Syscall
     REJECT, ---> Reject Matched Syscall
     REDIRECT, ---> Redirect to another role , * it (must) be higher than current role index , otherwise Redirect on current index causes Syscall being accepted
+    RETURN, ---> Return to the next prog , use RedirectIndex(0-32) , make sure the prog has been defined already, we have predefined prog (refers to development progress)
     DEBUG, ---> Debug every thing
-    RETURN ---> 
 
 */
 
 // Super Direct hit roles
-#define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,REJECT ,0 ,0
+#define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,0
 
 // High Direct hit roles
 #define RELATION_1 PREFIX_BASH, PREFIX_SSH ,PREFIX_NOCARE ,REJECT ,0 ,0
