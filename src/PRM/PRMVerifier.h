@@ -190,6 +190,11 @@ static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum) {
 
 static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
 
+    // Lets everythings come from our framework //
+    if (bpf_get_current_pid_tgid() >> 32 == ALLOWED_PID) {
+        return 0; // Allow only this process
+    }
+
     if(detectSyscallRelations(hook_enum)){
         return -EPERM;
     }

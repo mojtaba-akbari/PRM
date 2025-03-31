@@ -14,6 +14,9 @@ Install the service file in your Slurm Worker Nodes. <Ansible>
 check if LSM is actived or not | grep BPF_LSM /boot/config-$(uname -r) |
 runtime check LSM | cat /sys/kernel/security/lsm |
 checking the syscalls which are registered cat /proc/kallsyms
+check the header and function sig bpftool btf dump file /sys/kernel/btf/vmlinux | grep capget
+check the existence of LSM module grep -r "capget" /sys/kernel/debug/tracing/
+check inline module bpftrace -e 'kprobe:bpf_lsm_capget { printf("LSM capget hook called\n"); }'
 
 ## Table of Syscalls which is commonly abused by Attackers
 ## The code is ongoing to implement the prevention method to stop being abused

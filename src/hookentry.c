@@ -121,14 +121,14 @@ int BPF_PROG(monitor_inode_create, struct path *dir, struct dentry *dentry, int 
 // Modify Syslog messages //
 // Target -> you can monitor or block attempts to write to system logs //
 SEC("lsm/syslog")
-int BPF_PROG(monitor_syslog, int type, int type) {
+int BPF_PROG(monitor_syslog, int type) {
     return entryStartPoint(SYSLOG);
 }
 
 // Ptrace //
 // Target -> parent process tries to keep tracing current process //
 SEC("lsm/ptrace_traceme")
-int BPF_PROG(monitor_ptrace, int type, void) {
+int BPF_PROG(monitor_ptrace) {
     return entryStartPoint(TASK_PTRACE);
 }
 
@@ -141,17 +141,10 @@ int BPF_PROG(monitor_bprm_security, struct linux_binprm *bprm) {
     return entryStartPoint(BPRM_SECURITY);
 }
 
-// BPF // *** Mojtaba Added this for preventing from any self-attack! , Monitor the BPF hooks ;)
-// Target -> Self-Attack , Try to monitor BPF //
-SEC("lsm/bpf")
-int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
-    return entryStartPoint(BPF);
-}
-
 // Cap Get //
 // Target -> This hook is invoked when capabilities are retrieved for a process //
 SEC("lsm/capget")
-int BPF_PROG(monitor_capget, struct task_struct *task, struct __user_cap_header_struct *header, struct __user_cap_data_struct *data) {
+int BPF_PROG(monitor_capget, struct task_struct *target, kernel_cap_t *effective, kernel_cap_t *inheritable, kernel_cap_t *permitted) {
     return entryStartPoint(SECURITY_CAPGET);
 }
 
@@ -239,4 +232,15 @@ int BPF_PROG(monitor_task_movememory, struct task_struct *task) {
 SEC("lsm/task_setioprio")
 int BPF_PROG(monitor_task_setioprio, struct task_struct *task, int ioprio) {
     return entryStartPoint(TASK_SETIOPRIO);
+}
+
+
+
+
+// Notice: Never Attach BPF before other Progs //
+// BPF // *** Mojtaba Added this for preventing from any self-attack! , Monitor the BPF hooks ;)
+// Target -> Self-Attack , Try to monitor BPF //
+SEC("lsm/bpf")
+int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
+    return entryStartPoint(BPF);
 }
