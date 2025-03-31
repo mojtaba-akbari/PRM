@@ -169,10 +169,10 @@ struct {
 } prm_state_map SEC(".maps");
 
 struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, SELF_PIDS);
     __type(key, u32);
-    __type(value, u64);
+    __type(value, struct {__u32 pid;__u64 magic});
     __uint(map_flags, BPF_F_LOCK | BPF_F_RDONLY_PROG );
 } self_pids SEC(".maps");
 
