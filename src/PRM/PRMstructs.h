@@ -6,25 +6,37 @@
 // Use Stack Programming To Design The Whole PRM //
 // Stack Is Faster Than BFP Helper Calls For Allocating Data //
 // Here The Structure Is Between 512 Byte Allocation , So I Would Prefer Develop It As Stack //
-
+// Try to make hook enum because of any tasks comprise more than 2 or 3 differ syscalls , as well as differ linux distro //
 enum PRM_HOOK_ENUM{
-    NONE_CELL, // ---> Mimic From Kernel Index 0 Always Nothing
+    NONE_CELL, // ---> Mimic From Kernel Index 0 Always Nothing ;)
     FILE_PERMISSION,
+    FILE_IOCTL,
+    FILE_MPROTECT,
+    FILE_RECEIVE,
+    FILE_SIGIOTASK,
+    FILE_OPEN,
+    SB_MOUNT,
+    SHM_ALLOC,
     INODE_CREATE,
-    PROCESS_INIT,
-    TASK_SETPGID,
+    INODE_PERMISSION,
+    INODE_SETATTR,
+    INODE_MKDIR,
     SYSLOG,
     SOCKET_CREATE,
     SOCKET_CONNECT,
-    EXECVE,
+    BPRM_SECURITY,
     BPF,
-    OPEN,
     SECURITY_CAPGET,
-    MOUNT,
     TASK_KILL,
     TASK_ALLOC,
-    TASK_FORK,
-    TASK_PTRACE
+    TASK_MOVEMEMORY,
+    TASK_PTRACE,
+    TASK_SETPGID,
+    TASK_GETGID,
+    TASK_GETSID,
+    TASK_PRLIMIT,
+    TASK_SETPRLIMIT,
+    TASK_SETIOPRIO
 };
 
 enum PRM_STATE_ENUM {

@@ -11,6 +11,9 @@ git clone project in all of nodes <Ansible>
 cd deployment
 make
 Install the service file in your Slurm Worker Nodes. <Ansible>
+check if LSM is actived or not | grep BPF_LSM /boot/config-$(uname -r) |
+runtime check LSM | cat /sys/kernel/security/lsm |
+checking the syscalls which are registered cat /proc/kallsyms
 
 ## Table of Syscalls which is commonly abused by Attackers
 ## The code is ongoing to implement the prevention method to stop being abused

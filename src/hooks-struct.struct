@@ -1,0 +1,88 @@
+Mojtaba hooks list,
+You can any other takeaways to the end of this list , however these are the most High Potential hooks.
+Using These Syscalls must be practical , in theiory we can abused them but in practical security field it depends to different situations and conditions.
+
+
+Process & Execution Hooks (High-Value)
+
+    lsm/execve → Critical, attackers abuse it to hijack execution.
+
+    lsm/bprm_check_security → Checks binaries before execution.
+
+    lsm/task_create
+
+    lsm/task_fix_setuid
+
+    lsm/task_kill → Can deny signals (protect processes).
+
+    lsm/task_getpgid
+
+    lsm/task_getsid
+
+Filesystem Hooks (Persistence & Data Access)
+
+    lsm/inode_create
+
+    lsm/inode_unlink
+
+    lsm/inode_mkdir
+
+    lsm/inode_symlink
+
+    lsm/inode_permission → Super important for access control.
+
+    lsm/inode_setattr
+
+    lsm/inode_rename
+
+File Operations Hooks
+
+    lsm/file_open → Direct file open check.
+
+    lsm/file_permission
+
+    lsm/file_ioctl
+
+    lsm/file_mprotect
+
+    lsm/file_receive
+
+    lsm/file_send_sigiot
+
+Networking Hooks (Abused for lateral movement)
+
+    lsm/socket_create
+
+    lsm/socket_connect
+
+    lsm/socket_listen
+
+    lsm/socket_bind
+
+    lsm/socket_accept
+
+    lsm/socket_sendmsg
+
+    lsm/socket_recvmsg
+
+IPC & Shared Memory Hooks
+
+    lsm/sem_alloc_security
+
+    lsm/msg_queue_alloc_security
+
+    lsm/shm_alloc_security
+
+Miscellaneous Critical Hooks
+
+    lsm/module_load → Block kernel module loading.
+
+    lsm/kernfs_init_security
+
+    lsm/ptrace_access_check
+
+    lsm/ptrace_traceme
+
+    lsm/mmap_file
+
+    lsm/mmap_addr
