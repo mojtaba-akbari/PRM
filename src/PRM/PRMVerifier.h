@@ -189,11 +189,9 @@ static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum) {
 }
 
 static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
-
-    // Lets everythings come from our framework //
-    if (bpf_get_current_pid_tgid() >> 32 == ALLOWED_PID) {
-        return 0; // Allow only this process
-    }
+    __u32 pid=bpf_get_current_pid_tgid() >> 32;
+    __u32 *res= bpf_map_lookup_elem(&self_pids, &pid); 
+    if (res && *res == MAGIC_VALUE) return 0; 
 
     if(detectSyscallRelations(hook_enum)){
         return -EPERM;
@@ -203,4 +201,12 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
     return 0;
 }
 
+static __always_inline int saveSelfPID(){
+    bpf_spin_lock(&self_pids);
+    __u32 pid = bpf_get_current_pid_tgid() >> 32;
+    __u64 val = MAGIC_VALUE;
+    bpf_printk("PRM has been loading up with PID : %d",pid);
+    bpf_map_update_elem(&self_pids, &pid, &val, BPF_NOEXIST);
+    bpf_spin_unlock(&self_pids);
+}
 #endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H

@@ -19,11 +19,9 @@
     #define ENOENT 2
 #endif
 
-
 #ifndef EACCES
     #define EACCES 13
 #endif
-
 
 #ifndef EEXIST
     #define EEXIST 17
@@ -35,6 +33,18 @@
 
 #ifndef PRM_STATE
     #define PRM_STATE 1
+#endif
+
+#ifndef MAGIC_VALUE
+    #define MAGIC_VALUE 0xDEADBEEF
+#endif
+
+#ifndef SELF_PIDS
+    #define SELF_PIDS 1
+#endif
+
+#ifndef ALLOWED_PIDS
+    #define ALLOWED_PIDS 32
 #endif
 
 #ifndef MAX_LEN

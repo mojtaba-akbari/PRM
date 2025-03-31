@@ -160,12 +160,21 @@ struct {
     __type(value, struct process_relation);
 } prm_map SEC(".maps");
 
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, PRM_STATE);
     __type(key, __u32);
     __type(value, struct prm_state);
 } prm_state_map SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, SELF_PIDS);
+    __type(key, u32);
+    __type(value, u64);
+    __uint(map_flags, BPF_F_LOCK | BPF_F_RDONLY_PROG );
+} self_pids SEC(".maps");
 
 static void init_relation_map() {
     bpf_printk("Preparing PRM Relation Map...");

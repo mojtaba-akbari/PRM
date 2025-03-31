@@ -19,6 +19,20 @@ char _license[] SEC("license") = "GPL";
 // Mojtaba, The Hook Entry Point //
 // Wellcome to the hooks center ;0 I hope have enjoyable time here//
 
+// Notice: Attach BPF before other Progs we need to save this PID securly in the cookie //
+SEC("raw_tp/sys_enter")
+int BPF_PROG(boot_loader){
+    saveSelfPID();
+    return 0;
+}
+
+// BPF // *** Mojtaba Added this for preventing from any self-attack! , Monitor the BPF hooks ;)
+// Target -> Self-Attack , Try to monitor BPF //
+SEC("lsm/bpf")
+int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
+    return entryStartPoint(BPF);
+}
+
 
 // File Section //
 
@@ -237,10 +251,3 @@ int BPF_PROG(monitor_task_setioprio, struct task_struct *task, int ioprio) {
 
 
 
-// Notice: Never Attach BPF before other Progs //
-// BPF // *** Mojtaba Added this for preventing from any self-attack! , Monitor the BPF hooks ;)
-// Target -> Self-Attack , Try to monitor BPF //
-SEC("lsm/bpf")
-int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
-    return entryStartPoint(BPF);
-}
