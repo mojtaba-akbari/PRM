@@ -131,7 +131,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
                 if(mixedUP && (strcmp(prm->grandparent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (strcmp(grand_p_comm, prm->grandparent, MAX_RELATION_PROCESSNAME) ==0);
 
-                if(mixedUP) 
+                if(mixedUP)
                 {
                     bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                     switch (prm->action)
@@ -141,7 +141,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
                         case ACCEPT:
                             return 0;
                         case DEBUG:
-                            bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                            bpf_printk("Matched Debug Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             return 1;
                             break;
                         case REDIRECT:
@@ -210,7 +210,7 @@ static __always_inline int saveSelfPID(){
     __u32 key=0;
     __u32 currentPid = bpf_get_current_pid_tgid() >> 32;
     struct {__u32 pid; __u64 magic;} *value = bpf_map_lookup_elem(&self_pids, &key);
-    if(value && value->pid != currentPid && value->magic != MAGIC_VALUE){
+    if(value && value->pid == EMPTY && value->magic == EMPTY){
         struct {__u32 pid; __u64 magic;} currentValue = {.pid=currentPid,.magic=MAGIC_VALUE};
         bpf_printk("PRM has been loading up with PID : %d",currentPid);
         bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
