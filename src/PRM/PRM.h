@@ -12,8 +12,6 @@
     Notice: Dynamic Orders , you can use this ability to put your roles depends on different situation and conditions
 */
 
-#define MAX_NUMBER_OF_RELATION 80
-
 /* Structure:
     PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Hooks(0-N)
     Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
@@ -82,7 +80,17 @@
     TASK_SETPRLIMIT,
     TASK_SETIOPRIO ---> Index 27
 
+   __DEBUG__:
+    0 ---> No Expose Everything
+    1 ---> Expose Everything , Take care of performance  
 */
+
+#define MAX_NUMBER_OF_RELATION 80
+
+#define __DEBUG__ 0
+
+
+
 
 // Super Direct hit roles
 #define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,0 ,0

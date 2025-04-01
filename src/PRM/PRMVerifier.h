@@ -99,7 +99,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-    bpf_printk("***Syscalls Come from: Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm);
+    FULLY_DEBUG(__DEBUG__,bpf_printk("***Syscalls Come from: Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm));
 
     // Mojtaba, Get into roles
     // I customized the if clouse to be readable so put your roles there
@@ -122,7 +122,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
             if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
             {
-                bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone);
+                FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
                 __u32 mixedUP=1;
                 if(strcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (strcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
@@ -133,7 +133,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
                 if(mixedUP)
                 {
-                    bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                    FULLY_DEBUG(__DEBUG__,bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone));
                     switch (prm->action)
                     {
                         case REJECT:
