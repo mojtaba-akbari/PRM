@@ -1,4 +1,3 @@
-
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
@@ -32,8 +31,7 @@ int BPF_PROG(boot_loader){
 // Target -> Self-Attack , Try to monitor BPF //
 SEC("lsm/bpf")
 int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
-    if(saveSelfPID()) return 0;
-    return entryStartPoint(BPF);
+    return saveSelfPID()!=0? entryStartPoint(BPF): 0;
 }
 
 

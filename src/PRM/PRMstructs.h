@@ -65,7 +65,7 @@ struct process_relation {
     char parent[MAX_RELATION_PROCESSNAME];
     char grandparent[MAX_RELATION_PROCESSNAME];
     enum PROCESS_RELATION_ACTION_ENUM action;
-    __u32 redirectIndex;
+    int redirectIndex;
     bool protectZone;
     enum PRM_HOOK_ENUM hookType;
 };
@@ -170,7 +170,7 @@ const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata
     {RELATION_96},
     {RELATION_97},
     {RELATION_98},
-    {RELATION_99},
+    {RELATION_99}
 };
 
 struct {
@@ -206,7 +206,7 @@ struct {
 static void init_relation_map() {
     bpf_printk("Preparing PRM Relation Map...");
     __u32 _safeCounter_=0;
-    #pragma unroll
+
     for (int i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
         bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_data[_safeCounter_], BPF_ANY);

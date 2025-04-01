@@ -152,18 +152,6 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
 
 // Mojtaba , define as inline
 static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum, __u32 * PID) {
-    // Load Process Relation Table Roles //
-    struct prm_state *prm_state;
-    __u32 key = 0; // Static relation list location by key
-    prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
-    if (!prm_state) {
-        bpf_printk("There is no PRM , I am going to Prepare...");
-        Load_PRM();
-    }
-    else if (prm_state->prm_state == UNLOADED){
-        bpf_printk("PRM has been UNLOADED, I am going to load it up...");
-        Load_PRM();
-    }
 
     return PRMVerifier(hook_enum, PID);
 }
@@ -190,15 +178,30 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
 static __always_inline int saveSelfPID(){
     __u32 key=0;
     __u32 currentPid = bpf_get_current_pid_tgid() >> 32;
+    
     struct {__u32 pid; __u64 magic;} *value = bpf_map_lookup_elem(&self_pids, &key);
+
     if(value && value->pid == EMPTY && value->magic == EMPTY){
         struct {__u32 pid; __u64 magic;} currentValue = {.pid=currentPid,.magic=MAGIC_VALUE};
         bpf_printk("PRM has been loading up with PID : %d",currentPid);
         bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
 
-        return 1;
+        // Load Process Relation Table Roles //
+        struct prm_state *prm_state;
+        __u32 key = 0; // Static relation list location by key
+        prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
+        if (!prm_state) {
+            bpf_printk("There is no PRM , I am going to Prepare...");
+            Load_PRM();
+        }
+        else if (prm_state->prm_state == UNLOADED){
+            bpf_printk("PRM has been UNLOADED, I am going to load it up...");
+            Load_PRM();
+        }
+
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 #endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H
