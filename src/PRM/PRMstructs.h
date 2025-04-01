@@ -65,7 +65,7 @@ struct process_relation {
     char parent[MAX_RELATION_PROCESSNAME];
     char grandparent[MAX_RELATION_PROCESSNAME];
     enum PROCESS_RELATION_ACTION_ENUM action;
-    int redirectIndex;
+    __u32 redirectIndex;
     bool protectZone;
     enum PRM_HOOK_ENUM hookType;
 };

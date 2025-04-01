@@ -89,16 +89,16 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
     for (__u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
 
+        if(_redirectIndex_ > 0 && i < _redirectIndex_) continue;
+
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-            
-            if(_redirectIndex_ > 0 && i < _redirectIndex_) continue;
 
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
             if((prm->hookType != hook_enum) && (prm->hookType != NONE_CELL)) continue;
 
-            if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
+            if((prm->protectZone && _redirectIndex_ > 0) || (!prm->protectZone && _redirectIndex_ < 0))
             {
                 FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
