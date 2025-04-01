@@ -2,23 +2,27 @@
 #define FILTERING_SYSCALL_FRAMEWORK_PRM
 
 /*  Mojtaba, 
-    This Is PRM , Process Relation Map
+    This Is PRM , Process Relation Map , I hope you are able to create your pattern ;)
+
+
 
     PRM Table Page Size ---> 5 * Process Relation
     Number Of PRM Tables ---> 1 - 8 (Ordered) (If you want to check order faster put it by order --- it improves our performance)
     Process Relation Names ---> 16 * Byte (extra bytes are eliminated)
     
     Notice: Without enough tracing never add roles !!!
-    Notice: Dynamic Orders , you can use this ability to put your roles depends on different situation and conditions
+    Notice: Dynamic Orders , Take care of order which you put the roles
 */
 
 /* Structure:
+    
     PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Hooks(0-N)
+
     Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
             Protected zone flag true(1) never checks
 
    Roles :
-    (X) means knownable process, (NULL) means not important or everything or * PREFIX_NOCARE
+    (X) means knownable process,  PREFIX_NOCARE means everything (*)
 
     {PREFIX_NOCARE,PREFIX_NOCARE,PREFIX_NOCARE} ---> EveryThings (Deny Anything)
 
@@ -40,11 +44,11 @@
     ACCEPT, ---> Accept Matched Syscall
     REJECT, ---> Reject Matched Syscall
     REDIRECT, ---> Redirect to another role , * it (must) be higher than current role index , otherwise Redirect on current index causes Syscall being accepted
-    RETURN, ---> Return to the next prog , use RedirectIndex(0-32) , make sure the prog has been defined already, we have predefined prog (refers to development progress)
-    DEBUG, ---> Debug every thing
+    RETURN, ---> Return to the next prog , use RedirectIndex(0-32) , make sure the prog has been defined already, we have predefined prog (refers to development progress) (user RETURN 0 for any kind of test)
+    DEBUG, ---> Debug Matched Roles , (low overhead)
    
    Redirect:
-    0 <= X <= 79
+    0 <= X <= 99
 
    Protect-Zone:
     Protected ---> 1
@@ -82,10 +86,10 @@
 
    __DEBUG__:
     0 ---> No Expose Everything
-    1 ---> Expose Everything , Take care of performance  
+    1 ---> Expose Everything , (Highest amount of overheads)
 */
 
-#define MAX_NUMBER_OF_RELATION 80
+#define MAX_NUMBER_OF_RELATION 100
 
 #define __DEBUG__ 0
 
@@ -104,7 +108,7 @@
 
 #define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
 
-// Super Indirect hit roles
+// Super Indirect hit roles (Take care of these Roles Are so General Roles) Redirect These Roles to Protected Zone and check it out carefully
 #define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
 
 #define RELATION_6 PREFIX_NOCARE, PREFIX_FISH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
@@ -258,6 +262,46 @@
 
 #define RELATION_78 EMPTY
 
-#define RELATION_79 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,ACCEPT ,0 ,0 ,0 // ---> Accept Anything
+#define RELATION_79 EMPTY
+
+#define RELATION_80 EMPTY
+
+#define RELATION_81 EMPTY
+
+#define RELATION_82 EMPTY
+
+#define RELATION_83 EMPTY
+
+#define RELATION_84 EMPTY
+
+#define RELATION_85 EMPTY
+
+#define RELATION_86 EMPTY
+
+#define RELATION_87 EMPTY
+
+#define RELATION_88 EMPTY
+
+#define RELATION_89 EMPTY
+
+#define RELATION_90 EMPTY
+
+#define RELATION_91 EMPTY
+
+#define RELATION_92 EMPTY
+
+#define RELATION_93 EMPTY
+
+#define RELATION_94 EMPTY
+
+#define RELATION_95 EMPTY
+
+#define RELATION_96 EMPTY
+
+#define RELATION_97 EMPTY
+
+#define RELATION_98 EMPTY
+
+#define RELATION_99 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,ACCEPT ,0 ,0 ,0 // ---> Accept Anything
 
 #endif

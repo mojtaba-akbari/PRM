@@ -114,10 +114,8 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
             
             if(_redirectIndex_ > 0 && i < _redirectIndex_) continue;
 
-            // Check EMPTY Roles //
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
-            // Check The Syscall number //
             if((prm->syscallNumber != hook_enum) && (prm->syscallNumber != NONE_CELL)) continue;
 
             if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
@@ -141,7 +139,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
                         case ACCEPT:
                             return 0;
                         case DEBUG:
-                            bpf_printk("Matched Debug Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                            bpf_printk("Matched Debug Relations : %d %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             return 0;
                             break;
                         case REDIRECT:
