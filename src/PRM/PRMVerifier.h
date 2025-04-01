@@ -103,11 +103,11 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                 FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
                 __u32 mixedUP=1;
-                if(strcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (strcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
+                if(memcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (memcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
                 
-                if(mixedUP && (strcmp(prm->parent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (strcmp(p_comm, prm->parent, MAX_RELATION_PROCESSNAME) ==0);
+                if(mixedUP && (memcmp(prm->parent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (memcmp(p_comm, prm->parent, MAX_RELATION_PROCESSNAME) ==0);
 
-                if(mixedUP && (strcmp(prm->grandparent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (strcmp(grand_p_comm, prm->grandparent, MAX_RELATION_PROCESSNAME) ==0);
+                if(mixedUP && (memcmp(prm->grandparent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (memcmp(grand_p_comm, prm->grandparent, MAX_RELATION_PROCESSNAME) ==0);
 
                 if(mixedUP)
                 {
@@ -153,6 +153,19 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
 // Mojtaba , define as inline
 static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum, __u32 * PID) {
 
+        // Load Process Relation Table Roles //
+    struct prm_state *prm_state;
+    __u32 key = 0; // Static relation list location by key
+    prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
+    if (!prm_state) {
+        bpf_printk("There is no PRM , I am going to Prepare...");
+        Load_PRM();
+    }
+    else if (prm_state->prm_state == UNLOADED){
+        bpf_printk("PRM has been UNLOADED, I am going to load it up...");
+        Load_PRM();
+    }
+
     return PRMVerifier(hook_enum, PID);
 }
 
@@ -185,19 +198,6 @@ static __always_inline int saveSelfPID(){
         struct {__u32 pid; __u64 magic;} currentValue = {.pid=currentPid,.magic=MAGIC_VALUE};
         bpf_printk("PRM has been loading up with PID : %d",currentPid);
         bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
-
-        // Load Process Relation Table Roles //
-        struct prm_state *prm_state;
-        __u32 key = 0; // Static relation list location by key
-        prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
-        if (!prm_state) {
-            bpf_printk("There is no PRM , I am going to Prepare...");
-            Load_PRM();
-        }
-        else if (prm_state->prm_state == UNLOADED){
-            bpf_printk("PRM has been UNLOADED, I am going to load it up...");
-            Load_PRM();
-        }
 
         return 0;
     }

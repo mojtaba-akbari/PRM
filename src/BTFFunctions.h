@@ -21,7 +21,7 @@ static inline int max(int a, int b) {
 // Mojtaba , memcmp //
 // Take care of read carefully , read dirty
 static int memcmp(const void *s1, const void *s2, const __u32 n) {
-    __u8 c1, c2; // Mojtaba Define as unsinged 8 byte
+    __u8 c1, c2; // Mojtaba Defined as unsinged 2 byte
 
     for (__u32 i = 0; i < n; i++) {
         // Read 1 byte safely from each pointer // Mojtaba , Never compiler verifier does not allow you to use simple //
