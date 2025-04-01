@@ -125,6 +125,6 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
 
 static int testProg(){
     bpf_printk("___PROG___TEST__BRANCH___\n");
-    return 0;
+    return 0; // Let it goes
 }
 #endif

@@ -15,7 +15,7 @@
 #define MAX_NUMBER_OF_RELATION 80
 
 /* Structure:
-    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Syscall-Numbers(0-N)
+    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Hooks(0-N)
     Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
             Protected zone flag true(1) never checks
 
@@ -44,6 +44,43 @@
     REDIRECT, ---> Redirect to another role , * it (must) be higher than current role index , otherwise Redirect on current index causes Syscall being accepted
     RETURN, ---> Return to the next prog , use RedirectIndex(0-32) , make sure the prog has been defined already, we have predefined prog (refers to development progress)
     DEBUG, ---> Debug every thing
+   
+   Redirect:
+    0 <= X <= 79
+
+   Protect-Zone:
+    Protected ---> 1
+    Unprotected ---> 0
+   
+   Hooks:
+    FILE_PERMISSION, ---> Index 1
+    FILE_IOCTL,
+    FILE_MPROTECT,
+    FILE_RECEIVE,
+    FILE_SIGIOTASK,
+    FILE_OPEN,
+    SB_MOUNT,
+    SHM_ALLOC,
+    INODE_CREATE,
+    INODE_PERMISSION,
+    INODE_SETATTR,
+    INODE_MKDIR,
+    SYSLOG,
+    SOCKET_CREATE,
+    SOCKET_CONNECT,
+    BPRM_SECURITY,
+    BPF,
+    SECURITY_CAPGET,
+    TASK_KILL,
+    TASK_ALLOC,
+    TASK_MOVEMEMORY,
+    TASK_PTRACE,
+    TASK_SETPGID,
+    TASK_GETGID,
+    TASK_GETSID,
+    TASK_PRLIMIT,
+    TASK_SETPRLIMIT,
+    TASK_SETIOPRIO ---> Index 27
 
 */
 
@@ -213,6 +250,6 @@
 
 #define RELATION_78 EMPTY
 
-#define RELATION_79 EMPTY
+#define RELATION_79 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,ACCEPT ,0 ,0 ,0 // ---> Accept Anything
 
 #endif

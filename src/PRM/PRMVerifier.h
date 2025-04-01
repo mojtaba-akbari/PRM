@@ -142,12 +142,13 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
                             return 0;
                         case DEBUG:
                             bpf_printk("Matched Debug Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
-                            return 1;
+                            return 0;
                             break;
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= i){
                                 if(prm->redirectIndex == i){
-                                    return 0;
+                                    _redirectIndex_=-1;
+                                    continue;
                                 }
                                 else{
                                     _redirectIndex_ = prm->redirectIndex;
@@ -159,7 +160,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
                             }
                             break;
                         case RETURN:
-                            PRM_PROG_Dispatcher(prm->redirectIndex);
+                            return PRM_PROG_Dispatcher(prm->redirectIndex);
                             break;
                     }
                 }
