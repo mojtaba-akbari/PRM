@@ -32,7 +32,7 @@ int BPF_PROG(boot_loader){
 // Target -> Self-Attack , Try to monitor BPF //
 SEC("lsm/bpf")
 int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
-    saveSelfPID();
+    if(saveSelfPID()) return 0;
     return entryStartPoint(BPF);
 }
 

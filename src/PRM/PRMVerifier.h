@@ -39,36 +39,7 @@ static char * getCgroup(struct task_struct *task) {
 // Do not use it , till you need it emergency //
 // Please Do not change this algorithm because of more complixity //
 static void retreiveENVfromTask(struct task_struct * task, char * env, int env_len){
-    // unsigned long env_start;
-    // struct mm_struct *mm;
-    // char env_buf[ENV_MAX_SIZE] = {}; // Mojtaba, The Maximum Char of a Simple ENV i assume it 64 KEY=VALUE
-
-    // // Get memory mapping (mm_struct) from task
-    // mm = task->mm;
-    // if (!mm) {
-    //     return 0;
-    // }
-
-    // // Read the environment start address
-    // bpf_probe_read(&env_start, sizeof(env_start), &mm->env_start);
-
-    // // Mojtaba, Scan environment variables for "SLURM_JOB_USER=" 
-    // // Mojtaba , Put MAX_ITR because of long runing loop ofcurse this variable is part of first MAX_ITR //
-    // // I assume MAX_ITR for the highest numbers of ENV , But Take Care it is pointer to address not CHAR //
-    // for (int i = 0; i < MAX_ITR; i += sizeof(env_buf)) {
-
-    //     if (bpf_probe_read_str(env_buf, sizeof(env_buf), (void *)(env_start + i)) < 0) {
-    //         break; // take care close the loop if env address goes no where
-    //     }__u32
-        
-    //     bpf_printk("ENV  %s\n", env_buf);
-
-    //     if (memcmp(env_buf, env, env_len) == 0) {
-    //         char *username = env_buf + 15; // Mojtaba , do not need to use memcp just point to the first char to \0
-    //         bpf_probe_read_kernel_str(user_home + 6, sizeof(user_home) - 6, username);
-    //         break;
-    //     }
-    // }
+    // Implement ME
 }
 
 static __always_inline int addLRUCache(__u32 * processID, struct process_relation * prmRelation){
@@ -151,7 +122,6 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                         case DEBUG:
                             bpf_printk("Matched Debug Relations : %d %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             return 0;
-                            break;
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= i){
                                 if(prm->redirectIndex == i){
@@ -169,13 +139,13 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                             break;
                         case RETURN:
                             return PRM_PROG_Dispatcher(prm->redirectIndex);
-                            break;
                     }
                 }
             }
         }
     }
     
+    bpf_printk("***Unknown Sys has received (if you do not have Role make it): Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm);
 
     return 0;
 }
@@ -225,6 +195,10 @@ static __always_inline int saveSelfPID(){
         struct {__u32 pid; __u64 magic;} currentValue = {.pid=currentPid,.magic=MAGIC_VALUE};
         bpf_printk("PRM has been loading up with PID : %d",currentPid);
         bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
+
+        return 1;
     }
+
+    return 0;
 }
 #endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H

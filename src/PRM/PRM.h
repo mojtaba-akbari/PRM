@@ -16,7 +16,7 @@
 
 /* Structure:
     
-    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Hooks(0-N)
+    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Hooks(0-N) (0 Means do not care)
 
     Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
             Protected zone flag true(1) never checks
@@ -104,7 +104,7 @@
 
 #define RELATION_2 PREFIX_FISH, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
 
-#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,DEBUG ,0 ,0 ,0
+#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REDIRECT ,80 ,0 ,0
 
 #define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
 
@@ -125,7 +125,7 @@
 #define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE ,"slurmstepd" ,DEBUG ,0 ,0 ,0
 
 // If Found Any containerd - docker Redirect To Docker Zone
-#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,49 ,0 ,0
+#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,50 ,0 ,0
 
 #define RELATION_12 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SH ,DEBUG ,0 ,0 ,0
 
@@ -264,9 +264,10 @@
 
 #define RELATION_79 EMPTY
 
-#define RELATION_80 EMPTY
+// SSH Protected Zone //
+#define RELATION_80 PREFIX_SSH, PREFIX_SSH ,PREFIX_SSH ,ACCEPT ,0 ,1 ,1 // SSHD are working with file_permission Hook Number 1
 
-#define RELATION_81 EMPTY
+#define RELATION_81 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REDIRECT ,81 ,1 ,0 // End Of Zone
 
 #define RELATION_82 EMPTY
 
@@ -285,9 +286,9 @@
 #define RELATION_89 EMPTY
 
 // Bash - Fish - SH  Protect Zone //
-#define RELATION_90 PREFIX_NOCARE, PREFIX_BASH ,"su" , ACCEPT ,0 ,0 ,0 // Middle Bash has enough permission otherwise it is not able to have SU exp: grep -> bash -> su , any syscall
+#define RELATION_90 PREFIX_NOCARE, PREFIX_BASH ,"su" , ACCEPT ,0 ,1 ,0 // Middle Bash has enough permission otherwise it is not able to have SU exp: grep -> bash -> su , any syscall
 
-#define RELATION_91 EMPTY
+#define RELATION_91 PREFIX_NOCARE, PREFIX_BASH ,"su" , REDIRECT ,91 ,1 ,0 //End of Zone
 
 #define RELATION_92 EMPTY
 
@@ -303,6 +304,6 @@
 
 #define RELATION_98 EMPTY
 
-#define RELATION_99 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,ACCEPT ,0 ,0 ,0 // ---> Accept Anything
+#define RELATION_99 EMPTY
 
 #endif
