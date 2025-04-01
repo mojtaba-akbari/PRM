@@ -71,8 +71,17 @@ static void retreiveENVfromTask(struct task_struct * task, char * env, int env_l
     // }
 }
 
+static __always_inline int addLRUCache(__u32 * processID, struct process_relation * prmRelation){
+    bpf_printk("ProcessID with : %d added to white-list",processID);
+    return bpf_map_update_elem(&process_list, processID, prmRelation, BPF_ANY);
+}
+
+static __always_inline struct process_relation * getLRUCache(__u32 * processID){
+    return bpf_map_lookup_elem(&process_list, processID);
+}
+
 // Mojtaba, Verifier //
-static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
+static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct thread_info *tinfo = &task->thread_info;
     struct task_struct *parent;
@@ -116,11 +125,11 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
             if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
 
-            if((prm->syscallNumber != hook_enum) && (prm->syscallNumber != NONE_CELL)) continue;
+            if((prm->hookType != hook_enum) && (prm->hookType != NONE_CELL)) continue;
 
             if((prm->protectZone && _redirectIndex_ > 0) || !prm->protectZone)
             {
-                FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
+                FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
                 __u32 mixedUP=1;
                 if(strcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (strcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
@@ -131,15 +140,16 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
                 if(mixedUP)
                 {
-                    FULLY_DEBUG(__DEBUG__,bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone));
+                    FULLY_DEBUG(__DEBUG__,bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone));
                     switch (prm->action)
                     {
                         case REJECT:
                             return 1;
                         case ACCEPT:
+                            addLRUCache(PID,prm);
                             return 0;
                         case DEBUG:
-                            bpf_printk("Matched Debug Relations : %d %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                            bpf_printk("Matched Debug Relations : %d %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             return 0;
                             break;
                         case REDIRECT:
@@ -154,7 +164,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
                                 }
                             }
                             else {
-                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                                bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             }
                             break;
                         case RETURN:
@@ -171,7 +181,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 }
 
 // Mojtaba , define as inline
-static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum) {
+static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum, __u32 * PID) {
     // Load Process Relation Table Roles //
     struct prm_state *prm_state;
     __u32 key = 0; // Static relation list location by key
@@ -185,7 +195,7 @@ static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum) {
         Load_PRM();
     }
 
-    return PRMVerifier(hook_enum);
+    return PRMVerifier(hook_enum, PID);
 }
 
 static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
@@ -197,7 +207,9 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
         return 0;
     } 
 
-    if(detectSyscallRelations(hook_enum)){
+    if(getLRUCache(&currentPid)) return 0;
+
+    if(detectSyscallRelations(hook_enum, &currentPid)){
         return -EPERM;
     }
 

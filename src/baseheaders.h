@@ -44,7 +44,7 @@
 #endif
 
 #ifndef ALLOWED_PIDS
-    #define ALLOWED_PIDS 32
+    #define ALLOWED_PIDS 256
 #endif
 
 #ifndef MAX_LEN

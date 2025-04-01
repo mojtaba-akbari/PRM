@@ -67,7 +67,7 @@ struct process_relation {
     enum PROCESS_RELATION_ACTION_ENUM action;
     int redirectIndex;
     bool protectZone;
-    enum PRM_HOOK_ENUM syscallNumber;
+    enum PRM_HOOK_ENUM hookType;
 };
 
 const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata") = {
@@ -172,9 +172,16 @@ struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __uint(max_entries, SELF_PIDS);
     __type(key, u32);
-    __type(value, struct {__u32 pid;__u64 magic});
+    __type(value, struct {__u32 pid;__u64 magic;});
     __uint(map_flags, BPF_F_LOCK);
 } self_pids SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, ALLOWED_PIDS);  
+    __type(key, u32);           
+    __type(value, struct process_relation *);         
+} process_list SEC(".maps");
 
 static void init_relation_map() {
     bpf_printk("Preparing PRM Relation Map...");

@@ -109,7 +109,7 @@
 #define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
 
 // Super Indirect hit roles (Take care of these Roles Are so General Roles) Redirect These Roles to Protected Zone and check it out carefully
-#define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
+#define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,REDIRECT ,90 ,0 ,0
 
 #define RELATION_6 PREFIX_NOCARE, PREFIX_FISH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
 
@@ -125,7 +125,7 @@
 #define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE ,"slurmstepd" ,DEBUG ,0 ,0 ,0
 
 // If Found Any containerd - docker Redirect To Docker Zone
-#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,46 ,0 ,0
+#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,49 ,0 ,0
 
 #define RELATION_12 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SH ,DEBUG ,0 ,0 ,0
 
@@ -284,7 +284,8 @@
 
 #define RELATION_89 EMPTY
 
-#define RELATION_90 EMPTY
+// Bash - Fish - SH  Protect Zone //
+#define RELATION_90 PREFIX_NOCARE, PREFIX_BASH ,"su" , ACCEPT ,0 ,0 ,0 // Middle Bash has enough permission otherwise it is not able to have SU exp: grep -> bash -> su , any syscall
 
 #define RELATION_91 EMPTY
 
