@@ -17,6 +17,10 @@ checking the syscalls which are registered cat /proc/kallsyms
 check the header and function sig bpftool btf dump file /sys/kernel/btf/vmlinux | grep capget
 check the existence of LSM module grep -r "capget" /sys/kernel/debug/tracing/
 check inline module bpftrace -e 'kprobe:bpf_lsm_capget { printf("LSM capget hook called\n"); }'
+Take care of your Roles , the striction layer shows us how much system could affect forexampel
+Matched Relations : ld-linux-x86-64 -> bash -> su due to role : {0,*,bash,*,1,0,0}
+This Roles come from BPF hook with the second restricted bash role!
+Try to first debug the chain and then set up your roles.
 
 ## Table of Syscalls which is commonly abused by Attackers
 ## The code is ongoing to implement the prevention method to stop being abused

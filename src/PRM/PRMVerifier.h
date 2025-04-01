@@ -99,7 +99,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-    bpf_printk("***Syscalls Come from: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm);
+    bpf_printk("***Syscalls Come from: Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm);
 
     // Mojtaba, Get into roles
     // I customized the if clouse to be readable so put your roles there
@@ -142,6 +142,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum){
                             return 0;
                         case DEBUG:
                             bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->syscallNumber, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                            return 1;
                             break;
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= i){
@@ -192,7 +193,10 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
     __u32 key=0;
     __u32 currentPid=bpf_get_current_pid_tgid() >> 32;
     struct {__u32 pid; __u64 magic;} *value= bpf_map_lookup_elem(&self_pids, &key);
-    if (value && value->pid == currentPid && value->magic==MAGIC_VALUE) return 0; 
+    if (value && value->pid == currentPid && value->magic==MAGIC_VALUE) {
+        bpf_printk("Matched PID , SelfPID : %d , %d",currentPid,value->pid);
+        return 0;
+    } 
 
     if(detectSyscallRelations(hook_enum)){
         return -EPERM;
@@ -206,10 +210,10 @@ static __always_inline int saveSelfPID(){
     __u32 key=0;
     __u32 currentPid = bpf_get_current_pid_tgid() >> 32;
     struct {__u32 pid; __u64 magic;} *value = bpf_map_lookup_elem(&self_pids, &key);
-    if(!value){
+    if(value && value->pid != currentPid && value->magic != MAGIC_VALUE){
         struct {__u32 pid; __u64 magic;} currentValue = {.pid=currentPid,.magic=MAGIC_VALUE};
         bpf_printk("PRM has been loading up with PID : %d",currentPid);
-        bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_NOEXIST);
+        bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
     }
 }
 #endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H

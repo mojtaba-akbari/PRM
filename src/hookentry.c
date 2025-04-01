@@ -22,7 +22,6 @@ char _license[] SEC("license") = "GPL";
 // Notice: Attach BPF before other Progs we need to save this PID securly in the cookie //
 SEC("raw_tp/sys_enter")
 int BPF_PROG(boot_loader){
-    saveSelfPID();
     return 0;
 }
 
@@ -30,6 +29,7 @@ int BPF_PROG(boot_loader){
 // Target -> Self-Attack , Try to monitor BPF //
 SEC("lsm/bpf")
 int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
+    saveSelfPID();
     return entryStartPoint(BPF);
 }
 

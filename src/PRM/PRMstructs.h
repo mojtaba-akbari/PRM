@@ -173,7 +173,7 @@ struct {
     __uint(max_entries, SELF_PIDS);
     __type(key, u32);
     __type(value, struct {__u32 pid;__u64 magic});
-    __uint(map_flags, BPF_F_LOCK | BPF_F_RDONLY_PROG );
+    __uint(map_flags, BPF_F_LOCK);
 } self_pids SEC(".maps");
 
 static void init_relation_map() {
