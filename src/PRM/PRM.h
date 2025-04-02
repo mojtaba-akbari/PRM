@@ -265,7 +265,7 @@
 #define RELATION_79 EMPTY
 
 // SSH Protected Zone //
-#define RELATION_80 PREFIX_SSH, PREFIX_SSH ,PREFIX_SSH ,ACCEPT ,0 ,1 ,FILE_PERMISSION // If you are in this Role , SSHD is working with file_permission Hook Number 1 (file_permission)
+#define RELATION_80 PREFIX_SSH, PREFIX_SSH ,PREFIX_SSH ,ACCEPT ,0 ,1 ,0 // If you are in this Role , SSHD is working with file_permission Hook Number 1 (file_permission)
 
 #define RELATION_81 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REDIRECT ,81 ,1 ,0 // End Of Zone
 
