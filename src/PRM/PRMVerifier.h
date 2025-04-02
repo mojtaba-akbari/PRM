@@ -43,14 +43,16 @@ static void retreiveENVfromTask(struct task_struct * task, char * env, int env_l
 }
 
 static void addLRUCache(__u32 * processID, struct process_relation * prmRelation){
-    bpf_printk("ProcessID with : %d added to white-list",processID);
+    __u32 pid=*processID; // do not laugh to me :) i know what i am doing , maybe this pointer comes from another Maps , so first get value ;) trust me
+    bpf_printk("ProcessID with : %d added to white-list",pid);
     struct process_relation processTmpx={0};
     memcmp(&processTmpx,prmRelation,sizeof(struct process_relation));
-    bpf_map_update_elem(&process_list, processID, &processTmpx, BPF_ANY);
+    bpf_map_update_elem(&process_list, &pid, &processTmpx, BPF_ANY);
 }
 
 static struct process_relation * getLRUCache(__u32 * processID){
-    return bpf_map_lookup_elem(&process_list, processID);
+    __u32 pid=*processID;
+    return bpf_map_lookup_elem(&process_list, &pid);
 }
 
 // Mojtaba, Verifier //
@@ -149,7 +151,9 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
         }
     }
     
-    bpf_printk("***Unknown Sys has received (if you do not have Role make it): Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm);
+    bpf_printk("***Unknown Sys has received (if you do not have Role make it - Temporarly i am going to add this to while-list): Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm);
+    struct process_relation processTmpx={0};
+    addLRUCache(PID,&processTmpx);
 
     return 0;
 }
