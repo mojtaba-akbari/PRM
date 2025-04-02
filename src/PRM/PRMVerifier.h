@@ -88,7 +88,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
     struct process_relation *prm;
     __u32 _safeCounter_=0;
     int _redirectIndex_=-1;
-    for (volatile __u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
+    for (__u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
 
         if(_redirectIndex_ > 0 && _safeCounter_ < _redirectIndex_) continue;

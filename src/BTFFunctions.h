@@ -28,34 +28,23 @@ void * memset(void *ptr, int value, size_t num) {
 }
 // Mojtaba , memcmp //
 // Take care of read carefully , read dirty
-static int memcmp(const void *s1, const void *s2, const __u32 n) {
-    __u8 c1, c2; // Mojtaba Defined as unsinged 2 byte
-    __u32 _safeCounter_=0;
+static __u32 memcmp(const void *s1, const void *s2, const __u32 n) {
+    const __u8 *p1 = s1, *p2 = s2;
+
     for (__u32 i = 0; i < n; i++) {
-        // Read 1 byte safely from each pointer // Mojtaba , Never compiler verifier does not allow you to use simple //
-        // s1[i] != s2[i] because of unbound memory offset
-        _safeCounter_=i;
-        if (bpf_probe_read(&c1, sizeof(c1), (const __u8 *)s1 + _safeCounter_) < 0) return 1;
-        if (bpf_probe_read(&c2, sizeof(c2), (const __u8 *)s2 + _safeCounter_) < 0) return 1;
-
-        if (c1 != c2) return 1;
+        if (p1[i] != p2[i]) return 1;
     }
-
+    
     return 0;
 }
 // Mojtaba , strcmp
 // Notice , define MAX_ITR->MIN_ITR so short because of long loop
 // Define Len to just make it safer than simple \0 way
-static int strcmp(const char *s1, const char *s2, const __u32 len) {
-    char c1, c2;
-    __u32 _safeCounter_=0;
+// No need to use bpf helper , it causes extra heavy jumps
+static __u32 strcmp(const char *s1, const char *s2, const __u32 len) {
     for (__u32 i = 0; i < len; i++) {
-        _safeCounter_ = i;
-        if (bpf_probe_read_kernel(&c1, sizeof(c1), s1 + _safeCounter_) < 0) return 1;
-        if (bpf_probe_read_kernel(&c2, sizeof(c2), s2 + _safeCounter_) < 0) return 1;
-
-        if (c1 != c2) return 1;
-        if (c1 == '\0' && c2 == '\0') return 0;
+        if (s1[i] != s2[i]) return 1;  // Mismatch found
+        if (s1[i] == '\0' && s2[i] == '\0') return 0;  // Both reached end
     }
     return 0;
 }
@@ -63,10 +52,8 @@ static int strcmp(const char *s1, const char *s2, const __u32 len) {
 // Take care of Stack Memory
 static __u32 strlen(const char *str, const __u32 len) {
     __u32 lenCounter = 0;
-    char c;
-    while (lenCounter < len) { 
-        bpf_probe_read_kernel(&c, sizeof(c), str + lenCounter);
-        if (c == '\0') break;
+
+    while (lenCounter < len && str[lenCounter] != '\0') { 
         lenCounter++;
     }
 
