@@ -42,12 +42,14 @@ static void retreiveENVfromTask(struct task_struct * task, char * env, int env_l
     // Implement ME
 }
 
-static __always_inline int addLRUCache(__u32 * processID, struct process_relation * prmRelation){
+static void addLRUCache(__u32 * processID, struct process_relation * prmRelation){
     bpf_printk("ProcessID with : %d added to white-list",processID);
-    return bpf_map_update_elem(&process_list, processID, prmRelation, BPF_ANY);
+    struct process_relation processTmpx={0};
+    memcmp(&processTmpx,prmRelation,sizeof(struct process_relation));
+    bpf_map_update_elem(&process_list, processID, processTmpx, BPF_ANY);
 }
 
-static __always_inline struct process_relation * getLRUCache(__u32 * processID){
+static struct process_relation * getLRUCache(__u32 * processID){
     return bpf_map_lookup_elem(&process_list, processID);
 }
 
@@ -86,18 +88,18 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
     struct process_relation *prm;
     __u32 _safeCounter_=0;
     int _redirectIndex_=-1;
-    for (__u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
+    for (volatile __u32 i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
 
         if(_redirectIndex_ > 0 && _safeCounter_ < _redirectIndex_) continue;
 
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-            if((prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') || prm->action == NONE_ACTION) continue;
+            if(prm->process[0] == '\0' || prm->parent[0] == '\0' || prm->grandparent[0] == '\0' || prm->action == NONE_ACTION) continue;
 
-            if((prm->hookType != hook_enum) && (prm->hookType != NONE_CELL)) continue;
+            if((prm->hookType != NONE_CELL) && (prm->hookType != hook_enum)) continue;
 
-            if((prm->protectZone && _redirectIndex_ > 0) || (!prm->protectZone && _redirectIndex_ < 0))
+            if((prm->protectZone==1 && _redirectIndex_ >= 0) || (prm->protectZone==0 && _redirectIndex_ < 0))
             {
                 FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
@@ -113,8 +115,6 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                     FULLY_DEBUG(__DEBUG__,bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone));
                     switch (prm->action)
                     {
-                        case NONE_ACTION:
-                            break;
                         case REJECT:
                             return 1;
                         case ACCEPT:
@@ -126,7 +126,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= _safeCounter_){
                                 if(prm->redirectIndex == _safeCounter_){
-                                    _redirectIndex_=-1;
+                                    _redirectIndex_= -1;
                                     continue;
                                 }
                                 else{
@@ -136,10 +136,13 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                             }
                             else {
                                 bpf_printk("REDIRECT Role But With Wrong Index (Skip And Move on Next Role) : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                                continue;
                             }
                             break;
                         case RETURN:
                             return PRM_PROG_Dispatcher(prm->redirectIndex);
+                        default:
+                            continue;
                     }
                 }
             }
@@ -156,7 +159,7 @@ static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum, __u32 * PID) {
     return PRMVerifier(hook_enum, PID);
 }
 
-static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
+static int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
     __u32 key=0;
     __u32 currentPid=bpf_get_current_pid_tgid() >> 32;
     struct {__u32 pid; __u64 magic;} *value= bpf_map_lookup_elem(&self_pids, &key);
@@ -179,7 +182,7 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
     return 0;
 }
 
-static __always_inline int saveSelfPID(){
+static int saveSelfPID(){
     __u32 key=0;
     __u32 currentPid = bpf_get_current_pid_tgid() >> 32;
     

@@ -21,6 +21,7 @@ Take care of your Roles , the striction layer shows us how much system could aff
 Matched Relations : ld-linux-x86-64 -> bash -> su due to role : {0,*,bash,*,1,0,0}
 This Roles come from BPF hook with the second restricted bash role!
 Try to first debug the chain and then set up your roles.
+check the process into scheduler by bpftrace -e 'tracepoint:sched:sched_process_exec { printf("%s\n", comm); }'
 
 ## Table of Syscalls which is commonly abused by Attackers
 ## The code is ongoing to implement the prevention method to stop being abused
