@@ -46,7 +46,7 @@ static void addLRUCache(__u32 * processID, struct process_relation * prmRelation
     bpf_printk("ProcessID with : %d added to white-list",processID);
     struct process_relation processTmpx={0};
     memcmp(&processTmpx,prmRelation,sizeof(struct process_relation));
-    bpf_map_update_elem(&process_list, processID, processTmpx, BPF_ANY);
+    bpf_map_update_elem(&process_list, processID, &processTmpx, BPF_ANY);
 }
 
 static struct process_relation * getLRUCache(__u32 * processID){
