@@ -93,7 +93,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
 
         prm = bpf_map_lookup_elem(&prm_map, &_safeCounter_); // Retreive from user-space memory which was allocated in the libpbf load time , Mojtaba , 2 Hits to user-space memory
         if(prm){
-            if(prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') continue;
+            if((prm->process[0] == '\0' && prm->parent[0] == '\0' && prm->grandparent[0] == '\0') || prm->action == NONE_ACTION) continue;
 
             if((prm->hookType != hook_enum) && (prm->hookType != NONE_CELL)) continue;
 
@@ -160,12 +160,16 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
     __u32 key=0;
     __u32 currentPid=bpf_get_current_pid_tgid() >> 32;
     struct {__u32 pid; __u64 magic;} *value= bpf_map_lookup_elem(&self_pids, &key);
+
     if (value && value->pid == currentPid && value->magic==MAGIC_VALUE) {
-        bpf_printk("Matched PID , SelfPID : %d , %d",currentPid,value->pid);
+        FULLY_DEBUG(__DEBUG__,bpf_printk("Matched PID , SelfPID <Internal Syscalls>: %d , %d",currentPid,value->pid));
         return 0;
     } 
 
-    if(getLRUCache(&currentPid)) return 0;
+    if(getLRUCache(&currentPid)) {
+        FULLY_DEBUG(__DEBUG__,bpf_printk("Hit Process Table: (Calle PID=%d) , (Internal PID=%d)",currentPid,value->pid));
+        return 0;
+    }
 
     if(detectSyscallRelations(hook_enum, &currentPid)){
         return -EPERM;

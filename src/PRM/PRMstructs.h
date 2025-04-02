@@ -211,7 +211,8 @@ static void init_relation_map() {
     for (int i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
         struct process_relation processTmpx = relation_data[_safeCounter_];
-        if(processTmpx.process=='\0' || processTmpx.parent=='\0' || processTmpx.grandparent=='\0'){
+        if(processTmpx.process[0]=='\0' || processTmpx.parent[0]=='\0' || processTmpx.grandparent[0]=='\0'){
+            ASSERT_RUNTIME(0 , bpf_printk("Role#%d Have beem found fully EMPTY",_safeCounter_));
             memset(processTmpx.process,0,sizeof(MAX_RELATION_PROCESSNAME));
             memset(processTmpx.parent,0,sizeof(MAX_RELATION_PROCESSNAME));
             memset(processTmpx.grandparent,0,sizeof(MAX_RELATION_PROCESSNAME));
