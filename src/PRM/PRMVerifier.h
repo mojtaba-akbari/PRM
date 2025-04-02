@@ -54,9 +54,13 @@ static struct process_relation * getLRUCache(__u32 * processID,enum PRM_HOOK_ENU
     __u32 pid=*processID;
     struct process_relation *processTmpx=bpf_map_lookup_elem(&process_list, &pid);
     if(processTmpx){
-        if(processTmpx->action == NONE_ACTION || processTmpx->hookType == hook) // It comes with out PRM (daemon and background allowed services) Or check the process Hook type with the while list one
+        if(processTmpx->action == NONE_ACTION || processTmpx->hookType == NONE_CELL) // It comes with out PRM (daemon and background allowed services) Or check the process Hook type with the while list one
         {
             return processTmpx;
+        }
+        else{
+            if(processTmpx->hookType == hook)
+                return processTmpx;
         }
     }
     
@@ -64,7 +68,7 @@ static struct process_relation * getLRUCache(__u32 * processID,enum PRM_HOOK_ENU
 }
 
 // Mojtaba, Verifier //
-static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
+static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
     struct task_struct *task = (struct task_struct *) bpf_get_current_task_btf();
     struct thread_info *tinfo = &task->thread_info;
     struct task_struct *parent;
@@ -91,7 +95,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-    FULLY_DEBUG(__DEBUG__,bpf_printk("***Syscalls Come from: Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm));
+    FULLY_DEBUG(__DEBUG__,bpf_printk("***Syscalls Come from: Hook(%d) %s -> %s -> %s \n", hook, comm, p_comm, grand_p_comm));
 
     // Mojtaba, Get into roles
     // I customized the if clouse to be readable so put your roles there
@@ -107,11 +111,11 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
         if(prm){
             if(prm->process[0] == '\0' || prm->parent[0] == '\0' || prm->grandparent[0] == '\0' || prm->action == NONE_ACTION) continue;
 
-            if((prm->hookType != NONE_CELL) && (prm->hookType != hook_enum)) continue;
+            if((prm->hookType != NONE_CELL) && (prm->hookType != hook)) continue;
 
             if((prm->protectZone==1 && _redirectIndex_ >= 0) || (prm->protectZone==0 && _redirectIndex_ < 0))
             {
-                FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
+                FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
                 __u32 mixedUP=1;
                 if(strcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (strcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
@@ -131,7 +135,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                             addLRUCache(PID,prm);
                             return 0;
                         case DEBUG:
-                            bpf_printk("Matched Debug Relations : %d %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
+                            bpf_printk("Matched Debug Relations : %d %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", hook, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone);
                             return 0;
                         case REDIRECT:
                             if(prm->redirectIndex < MAX_NUMBER_OF_RELATION && prm->redirectIndex >= _safeCounter_){
@@ -159,7 +163,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
         }
     }
     
-    bpf_printk("***Unknown Sys has received (if you do not have Role make it - Temporarly i am going to add this to while-list): Hook(%d) %s -> %s -> %s \n", hook_enum, comm, p_comm, grand_p_comm);
+    bpf_printk("***Unknown Sys has received (if you do not have Role make it - Temporarly i am going to add this to while-list): Hook(%d) %s -> %s -> %s \n", hook, comm, p_comm, grand_p_comm);
     struct process_relation processTmpx={0};
     addLRUCache(PID,&processTmpx);
 
@@ -167,11 +171,11 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
 }
 
 // Mojtaba , define as inline
-static int detectSyscallRelations(enum PRM_HOOK_ENUM hook_enum, __u32 * PID) {
-    return PRMVerifier(hook_enum, PID);
+static int detectSyscallRelations(enum PRM_HOOK_ENUM hook, __u32 * PID) {
+    return PRMVerifier(hook, PID);
 }
 
-static int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
+static int entryStartPoint(enum PRM_HOOK_ENUM hook){
     __u32 key=0;
     __u32 currentPid=bpf_get_current_pid_tgid() >> 32;
     struct {__u32 pid; __u64 magic;} *value= bpf_map_lookup_elem(&self_pids, &key);
@@ -181,12 +185,12 @@ static int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
         return 0;
     } 
 
-    if(getLRUCache(&currentPid)) {
+    if(getLRUCache(&currentPid,hook)) {
         FULLY_DEBUG(__DEBUG__,bpf_printk("True Hit Process Table: (Calle PID=%d)",currentPid));
         return 0;
     }
 
-    if(detectSyscallRelations(hook_enum, &currentPid)){
+    if(detectSyscallRelations(hook, &currentPid)){
         return -EPERM;
     }
 
