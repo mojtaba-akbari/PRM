@@ -18,6 +18,14 @@ static inline int min(int a, int b) {
 static inline int max(int a, int b) {
     return a > b ? a : b;
 }
+// Mojtaba , memset //
+void * memset(void *ptr, int value, size_t num) {
+    unsigned char *p = ptr;
+    while (num--) {
+        *p++ = (unsigned char)value;
+    }
+    return ptr;
+}
 // Mojtaba , memcmp //
 // Take care of read carefully , read dirty
 static int memcmp(const void *s1, const void *s2, const __u32 n) {
@@ -36,6 +44,7 @@ static int memcmp(const void *s1, const void *s2, const __u32 n) {
 }
 // Mojtaba , strcmp
 // Notice , define MAX_ITR->MIN_ITR so short because of long loop
+// Define Len to just make it safer than simple \0 way
 static int strcmp(const char *s1, const char *s2, const __u32 len) {
     char c1, c2;
 

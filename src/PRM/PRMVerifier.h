@@ -103,17 +103,19 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook_enum, __u32 * PID){
                 FULLY_DEBUG(__DEBUG__,bpf_printk("Syscall Comes From: %d %s -> %s -> %s due to role : {%s,%s,%s,%d,%d,%d}\n", hook_enum, comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone));
 
                 __u32 mixedUP=1;
-                if(memcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (memcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
+                if(strcmp(prm->process,PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0) mixedUP &= (strcmp(comm, prm->process, MAX_RELATION_PROCESSNAME) ==0);
                 
-                if(mixedUP && (memcmp(prm->parent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (memcmp(p_comm, prm->parent, MAX_RELATION_PROCESSNAME) ==0);
+                if(mixedUP && (strcmp(prm->parent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (strcmp(p_comm, prm->parent, MAX_RELATION_PROCESSNAME) ==0);
 
-                if(mixedUP && (memcmp(prm->grandparent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (memcmp(grand_p_comm, prm->grandparent, MAX_RELATION_PROCESSNAME) ==0);
+                if(mixedUP && (strcmp(prm->grandparent, PREFIX_NOCARE, MAX_RELATION_PROCESSNAME) != 0)) mixedUP &=  (strcmp(grand_p_comm, prm->grandparent, MAX_RELATION_PROCESSNAME) ==0);
 
                 if(mixedUP)
                 {
                     FULLY_DEBUG(__DEBUG__,bpf_printk("Matched Relations : %s -> %s -> %s due to role : {%d,%s,%s,%s,%d,%d,%d}\n", comm, p_comm, grand_p_comm , prm->hookType, prm->process , prm->parent, prm->grandparent,prm->action,prm->redirectIndex,prm->protectZone));
                     switch (prm->action)
                     {
+                        case NONE_ACTION:
+                            break;
                         case REJECT:
                             return 1;
                         case ACCEPT:

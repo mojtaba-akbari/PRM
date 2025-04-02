@@ -53,6 +53,7 @@ struct prm_state {
 };
 
 enum PROCESS_RELATION_ACTION_ENUM{
+    NONE_ACTION,
     ACCEPT,
     REJECT,
     REDIRECT,
@@ -65,8 +66,8 @@ struct process_relation {
     char parent[MAX_RELATION_PROCESSNAME];
     char grandparent[MAX_RELATION_PROCESSNAME];
     enum PROCESS_RELATION_ACTION_ENUM action;
-    int redirectIndex;
-    bool protectZone;
+    __u32 redirectIndex;
+    bool protectZone : 1;
     enum PRM_HOOK_ENUM hookType;
 };
 
@@ -209,7 +210,32 @@ static void init_relation_map() {
 
     for (int i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
-        bpf_map_update_elem(&prm_map, &_safeCounter_, &relation_data[_safeCounter_], BPF_ANY);
+        struct process_relation processTmpx = relation_data[_safeCounter_];
+        struct process_relation empty={0};
+        if(memcmp(&processTmpx,&empty,sizeof(struct process_relation))){
+            memset(processTmpx.process,0,sizeof(MAX_RELATION_PROCESSNAME));
+            memset(processTmpx.parent,0,sizeof(MAX_RELATION_PROCESSNAME));
+            memset(processTmpx.grandparent,0,sizeof(MAX_RELATION_PROCESSNAME));
+            processTmpx.action = NONE_ACTION;
+            processTmpx.hookType = NONE_CELL;
+            processTmpx.redirectIndex = 0;
+            processTmpx.protectZone=0;
+        }
+        else{
+            ASSERT(strlen(processTmpx.process,MAX_RELATION_PROCESSNAME) > 0 , bpf_printk("Role#%d wrong process name",_safeCounter_));
+            ASSERT(strlen(processTmpx.parent,MAX_RELATION_PROCESSNAME) > 0 , bpf_printk("Role#%d wrong parent name",_safeCounter_));
+            ASSERT(strlen(processTmpx.grandparent,MAX_RELATION_PROCESSNAME) > 0 , bpf_printk("Role#%d wrong grand name",_safeCounter_));
+
+            ASSERT((processTmpx.action>0) && (processTmpx.action<=5) , bpf_printk("Role#%d wrong action",_safeCounter_));
+            ASSERT((processTmpx.hookType>=0) && (processTmpx.hookType<=27) , bpf_printk("Role#%d wrong hook type",_safeCounter_));
+            ASSERT((processTmpx.redirectIndex>=0) && (processTmpx.redirectIndex<=MAX_NUMBER_OF_RELATION-1) , bpf_printk("Role#%d wrong redirect index",_safeCounter_));
+            ASSERT((processTmpx.protectZone==0 || processTmpx.protectZone==1) , bpf_printk("Role#%d wrong protect zone flag index",_safeCounter_));
+        }
+        
+        bpf_printk("Role Number #%d {(process=%s),(parent=%s),(grand=%s),(hookType=%d),(action=%d),(redirectIndex=%d),(protectZone=%d)} Loaded Up",_safeCounter_,processTmpx.process,
+                        processTmpx.parent,processTmpx.grandparent,processTmpx.hookType,processTmpx.action,processTmpx.redirectIndex,processTmpx.protectZone);
+
+        bpf_map_update_elem(&prm_map, &_safeCounter_, &processTmpx, BPF_ANY);
     }
 }
 
