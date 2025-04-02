@@ -50,9 +50,17 @@ static void addLRUCache(__u32 * processID, struct process_relation * prmRelation
     bpf_map_update_elem(&process_list, &pid, &processTmpx, BPF_ANY);
 }
 
-static struct process_relation * getLRUCache(__u32 * processID){
+static struct process_relation * getLRUCache(__u32 * processID,enum PRM_HOOK_ENUM hook){
     __u32 pid=*processID;
-    return bpf_map_lookup_elem(&process_list, &pid);
+    struct process_relation *processTmpx=bpf_map_lookup_elem(&process_list, &pid);
+    if(processTmpx){
+        if(processTmpx->action == NONE_ACTION || processTmpx->hookType == hook) // It comes with out PRM (daemon and background allowed services) Or check the process Hook type with the while list one
+        {
+            return processTmpx;
+        }
+    }
+    
+    return NULL;
 }
 
 // Mojtaba, Verifier //
