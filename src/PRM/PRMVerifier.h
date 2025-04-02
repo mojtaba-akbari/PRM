@@ -167,7 +167,7 @@ static __always_inline int entryStartPoint(enum PRM_HOOK_ENUM hook_enum){
     } 
 
     if(getLRUCache(&currentPid)) {
-        FULLY_DEBUG(__DEBUG__,bpf_printk("Hit Process Table: (Calle PID=%d) , (Internal PID=%d)",currentPid,value->pid));
+        FULLY_DEBUG(__DEBUG__,bpf_printk("True Hit Process Table: (Calle PID=%d)",currentPid));
         return 0;
     }
 
