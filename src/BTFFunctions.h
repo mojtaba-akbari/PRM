@@ -30,12 +30,13 @@ void * memset(void *ptr, int value, size_t num) {
 // Take care of read carefully , read dirty
 static int memcmp(const void *s1, const void *s2, const __u32 n) {
     __u8 c1, c2; // Mojtaba Defined as unsinged 2 byte
-
+    __u32 _safeCounter_=0;
     for (__u32 i = 0; i < n; i++) {
         // Read 1 byte safely from each pointer // Mojtaba , Never compiler verifier does not allow you to use simple //
         // s1[i] != s2[i] because of unbound memory offset
-        if (bpf_probe_read(&c1, sizeof(c1), (const __u8 *)s1 + i) < 0) return 1;
-        if (bpf_probe_read(&c2, sizeof(c2), (const __u8 *)s2 + i) < 0) return 1;
+        _safeCounter_=i;
+        if (bpf_probe_read(&c1, sizeof(c1), (const __u8 *)s1 + _safeCounter_) < 0) return 1;
+        if (bpf_probe_read(&c2, sizeof(c2), (const __u8 *)s2 + _safeCounter_) < 0) return 1;
 
         if (c1 != c2) return 1;
     }
