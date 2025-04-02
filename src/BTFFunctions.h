@@ -47,11 +47,11 @@ static int memcmp(const void *s1, const void *s2, const __u32 n) {
 // Define Len to just make it safer than simple \0 way
 static int strcmp(const char *s1, const char *s2, const __u32 len) {
     char c1, c2;
-
-    #pragma unroll
-    for (int i = 0; i < len; i++) {
-        if (bpf_probe_read_kernel(&c1, sizeof(c1), s1 + i) < 0) return 1;
-        if (bpf_probe_read_kernel(&c2, sizeof(c2), s2 + i) < 0) return 1;
+    __u32 _safeCounter_=0;
+    for (__u32 i = 0; i < len; i++) {
+        _safeCounter_ = i;
+        if (bpf_probe_read_kernel(&c1, sizeof(c1), s1 + _safeCounter_) < 0) return 1;
+        if (bpf_probe_read_kernel(&c2, sizeof(c2), s2 + _safeCounter_) < 0) return 1;
 
         if (c1 != c2) return 1;
         if (c1 == '\0' && c2 == '\0') return 0;
