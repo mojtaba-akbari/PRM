@@ -200,8 +200,8 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, ALLOWED_PIDS);  
-    __type(key, u32);           
-    __type(value, struct process_relation *);         
+    __type(key, u32);
+    __type(value, struct process_relation); 
 } process_list SEC(".maps");
 
 static void init_relation_map() {
