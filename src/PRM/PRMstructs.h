@@ -7,6 +7,15 @@
 // Stack Is Faster Than BFP Helper Calls For Allocating Data //
 // Here The Structure Is Between 512 Byte Allocation , So I Would Prefer Develop It As Stack //
 // Try to make hook enum because of any tasks comprise more than 2 or 3 differ syscalls , as well as differ linux distro //
+enum PRM_DEBUG_LEVEL_ENUM{
+    NOTHING,
+    LOWER,
+    NORMAL,
+    EXTERA,
+    HIGH,
+    VERBOSE
+};
+
 enum PRM_HOOK_ENUM{
     NONE_CELL, // ---> Mimic From Kernel Index 0 Always Nothing ;)
     FILE_PERMISSION,

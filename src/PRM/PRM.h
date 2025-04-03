@@ -85,13 +85,17 @@
     TASK_SETIOPRIO ---> Index 27
 
    __DEBUG__:
-    0 ---> No Expose Everything
-    1 ---> Expose Everything , (Highest amount of overheads)
+    NONE,
+    LOWER,
+    NORMAL,
+    EXTERA,
+    HIGH,
+    VERBOSE
 */
 
 #define MAX_NUMBER_OF_RELATION 100
 
-#define __DEBUG__ 0
+#define __DEBUG__ NONE
 
 
 
