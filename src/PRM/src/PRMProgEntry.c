@@ -1,5 +1,12 @@
-#ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_ENTRY
-#define FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_ENTRY
+#include "../include/PRMProgEntry.h"
+#include "../../include/baseheaders.h"
+#include "../../include/BTFFunctions.h"
+
+static int testProg(){
+    bpf_printk("___PROG___TEST__BRANCH___\n");
+    return 0; // Let it goes
+}
+
 // Mojtaba, Deny Any Write OutSide of Home Directory //
 // Check the Mask , Current Directory , And rewrite this part of memory then Let them to Open and Write file
 static int denyWritingDestinationFile(struct file *file, int mask){
@@ -123,8 +130,3 @@ static int redirectWritingDestinationFileToTMP(struct path *dir, struct dentry *
     return 0; // Allow normal writes
 }
 
-static int testProg(){
-    bpf_printk("___PROG___TEST__BRANCH___\n");
-    return 0; // Let it goes
-}
-#endif

@@ -2,14 +2,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
-#include <BTFFunctions.h>
-#include <baseheaders.h>
-#include <PRM/PRM.h>
-#include <PRM/PRMProg.h>
-#include <PRM/PRMProgEntry.h>
-#include <PRM/PRMProgDispatcher.h>
-#include <PRM/PRMstructs.h>
-#include <PRM/PRMVerifier.h>
+#include <include/baseheaders.h>
+#include <include/BTFFunctions.h>
+#include <PRM/include/PRMStructs.h>
+#include <PRM/src/PRMVerifier.c>
 
 
 

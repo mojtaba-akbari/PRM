@@ -1,6 +1,10 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_Dispatcher
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_Dispatcher
 
+#include "PRMProg.h"
+
+static int PRM_PROG_Dispatcher(__u32 idx);
+
 #define PROG_CASE_GENERATOR(idx) case idx: return PROG_##idx;
 
 #define PROG_SWITCH_GENERATOR(dispatch) switch(dispatch){ \
@@ -37,11 +41,5 @@
                                             PROG_CASE_GENERATOR(30) \
                                             PROG_CASE_GENERATOR(31) \
                                         }
-
-static int PRM_PROG_Dispatcher(__u32 idx){
-    PROG_SWITCH_GENERATOR(idx)
-
-    return 0;
-}
 
 #endif
