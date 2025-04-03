@@ -8,12 +8,12 @@
 // Here The Structure Is Between 512 Byte Allocation , So I Would Prefer Develop It As Stack //
 // Try to make hook enum because of any tasks comprise more than 2 or 3 differ syscalls , as well as differ linux distro //
 enum PRM_DEBUG_LEVEL_ENUM{
-    NOTHING,
-    LOWER,
-    NORMAL,
-    EXTERA,
-    HIGH,
-    VERBOSE
+    NOTHING = 0,
+    LOWER = 1 << 0,
+    NORMAL = 1 << 1,
+    EXTERA = 1 << 2,
+    HIGH = 1 << 3, 
+    VERBOSE = 1 << 4
 };
 
 enum PRM_HOOK_ENUM{

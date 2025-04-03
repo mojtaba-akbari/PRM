@@ -85,7 +85,7 @@
     TASK_SETIOPRIO ---> Index 27
 
    __DEBUG__:
-    NONE,
+    NOTHING,
     LOWER,
     NORMAL,
     EXTERA,
@@ -95,7 +95,7 @@
 
 #define MAX_NUMBER_OF_RELATION 100
 
-#define __DEBUG__ NONE
+#define __DEBUG__ NOTHING
 
 
 
