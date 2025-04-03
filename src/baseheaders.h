@@ -174,5 +174,5 @@
 
 // MACRO PREPROCESSOR //
 #define IS_NUMERIC(x) (0 * x + 0)
-#define FULLY_DEBUG(x,z,y) do { if ((x&z)) { y; } } while (0)
+#define FULLY_DEBUG(x,z,y) do { if ((x&z) != 0) { y; } } while (0)
 #define ASSERT_RUNTIME(x,y) do { if(!x) { y; } } while (0)

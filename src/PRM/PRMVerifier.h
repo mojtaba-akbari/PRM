@@ -44,7 +44,7 @@ static void retreiveENVfromTask(struct task_struct * task, char * env, int env_l
 
 static void addLRUCache(__u32 * processID, struct process_relation * prmRelation){
     __u32 pid=*processID; // do not laugh to me :) i know what i am doing , maybe this pointer comes from another Maps , so first get value ;) trust me
-    FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL,bpf_printk("Hook Received: PID(%d) Matched with relation (maybe relation is EMPTY) : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", pid, 
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMA)L,bpf_printk("Hook Received: PID(%d) Matched with relation (maybe relation is EMPTY) : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", pid, 
                                                 prmRelation->process , prmRelation->parent, prmRelation->grandparent, prmRelation->action, prmRelation->redirectIndex,prmRelation->protectZone, prmRelation->hookType));
     struct process_relation processTmpx={0};
     memcmp(&processTmpx,prmRelation,sizeof(struct process_relation));
@@ -96,7 +96,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
 
     bpf_probe_read_kernel_str(grand_p_comm, sizeof(grand_p_comm), grandparent->comm);
 
-    FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH,bpf_printk("***Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} \n", hook,*PID, comm, p_comm, grand_p_comm));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH),bpf_printk("***Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} \n", hook,*PID, comm, p_comm, grand_p_comm));
 
     // Mojtaba, Get into roles
     // I customized the if clouse to be readable so put your roles there
@@ -116,7 +116,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
 
             if((prm->protectZone==1 && _redirectIndex_ >= 0) || (prm->protectZone==0 && _redirectIndex_ < 0))
             {
-                FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA,bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Check the relation : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Check the relation : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
                                                 prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone, prm->hookType));
 
                 __u32 mixedUP=1;
@@ -128,7 +128,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
 
                 if(mixedUP)
                 {
-                    FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL,bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Matched the relation : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
+                    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Matched the relation : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
                                                 prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone, prm->hookType));
                     switch (prm->action)
                     {
@@ -138,7 +138,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
                             addLRUCache(PID,prm);
                             return 0;
                         case DEBUG:
-                            FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING,bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Matched the relation (Debug Action) : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
+                            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Matched the relation (Debug Action) : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
                                                 prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone, prm->hookType));
                             return 0;
                         case REDIRECT:
@@ -153,7 +153,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
                                 }
                             }
                             else {
-                                FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING,bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Matched the relation (Redirect Action) : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
+                                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Matched the relation (Redirect Action) : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook, *PID,comm, p_comm, grand_p_comm , 
                                                 prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone, prm->hookType));
                                 continue;
                             }
@@ -168,7 +168,7 @@ static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * PID){
         }
     }
     
-    FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NONE,bpf_printk("Unknown Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Not Matched any relations (Count as White Process - Or Add Role) \n", hook, *PID,comm, p_comm, grand_p_comm));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Unknown Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Not Matched any relations (Count as White Process - Or Add Role) \n", hook, *PID,comm, p_comm, grand_p_comm));
 
     struct process_relation processTmpx={0};
     addLRUCache(PID,&processTmpx);
@@ -188,12 +188,12 @@ static int entryStartPoint(enum PRM_HOOK_ENUM hook){
     struct {__u32 pid; __u64 magic;} *value= bpf_map_lookup_elem(&self_pids, &key);
 
     if (value && value->pid == currentPid && value->magic==MAGIC_VALUE) {
-         FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH,bpf_printk("Hook Received: Hook(%d)-PID(%d) Self-PID , Internal Hooks \n", hook, currentPid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH),bpf_printk("Hook Received: Hook(%d)-PID(%d) Self-PID , Internal Hooks \n", hook, currentPid));
         return 0;
     } 
 
     if(getLRUCache(&currentPid,hook)) {
-        FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH,bpf_printk("Hook Received: Hook(%d)-PID(%d) Matched with process white list \n", hook, currentPid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH),bpf_printk("Hook Received: Hook(%d)-PID(%d) Matched with process white list \n", hook, currentPid));
         return 0;
     }
 
@@ -214,7 +214,7 @@ static int saveSelfPID(){
     if(value && value->pid == EMPTY && value->magic == EMPTY){
         struct {__u32 pid; __u64 magic;} currentValue = {.pid=currentPid,.magic=MAGIC_VALUE};
 
-        FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING,bpf_printk("PRM verifier is setting up itself PID : %d",currentPid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("PRM verifier is setting up itself PID : %d",currentPid));
         
         bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
 
@@ -223,11 +223,11 @@ static int saveSelfPID(){
         __u32 key = 0; // Static relation list location by key
         prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
         if (!prm_state) {
-            FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING,bpf_printk("PRM is loading up PID : %d",currentPid));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("PRM is loading up PID : %d",currentPid));
             Load_PRM();
         }
         else if (prm_state->prm_state == UNLOADED){
-            FULLY_DEBUG(__DEBUG__,VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING,bpf_printk("PRM has been unloaded , PRM is loading up again PID : %d",currentPid));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("PRM has been unloaded , PRM is loading up again PID : %d",currentPid));
             Load_PRM();
         }
 

@@ -95,7 +95,7 @@
 
 #define MAX_NUMBER_OF_RELATION 100
 
-#define __DEBUG__ NOTHING
+#define __DEBUG__ (NORMAL|LOWER)
 
 
 
