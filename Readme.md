@@ -135,10 +135,11 @@ Tips:
 
 In PRM.h, define your role rules as:
 
+```
 #define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,0 ,0
 #define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,50 ,0 ,0
 #define RELATION_90 PREFIX_NOCARE, PREFIX_BASH ,"su" , ACCEPT ,0 ,1 ,0
-
+```
 
 Reserved roles: Use #define RELATION_N EMPTY
 
