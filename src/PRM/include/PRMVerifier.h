@@ -1,21 +1,18 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_Verifier_H
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_Verifier_H
 
-static char * getCgroup(struct task_struct *task);
+#include "../include/conf/PRM.h"
+#include "../include/conf/PRMConfig.h"
+#include "../include/PRMProgDispatcher.h"
+#include "../include/PRMFilters.h"
 
-static void retreiveENVfromTask(struct task_struct * task, char * env, int env_len);
+static int PRMVerifier(struct hooks_context_t *hook_ctx);
 
-static void addLRUCache(__u32 * processID, struct process_relation * prmRelation);
+static int detectSyscallRelations(struct hooks_context_t *hook_ctx);
 
-static struct process_relation * getLRUCache(__u32 * processID,enum PRM_HOOK_ENUM hook);
+static int entryStartPoint(struct hooks_context_t *hook_ctx);
 
-static int PRMVerifier(enum PRM_HOOK_ENUM hook, __u32 * pid);
-
-static int detectSyscallRelations(enum PRM_HOOK_ENUM hook, __u32 * pid);
-
-static int entryStartPoint(enum PRM_HOOK_ENUM hook);
-
-static int saveSelfPID();
+static int saveSelfPID(struct hooks_context_t *hook_ctx);
 
 
 #endif // FILTERING_SYSCALL_FRAMEWORK_HELPERS_H

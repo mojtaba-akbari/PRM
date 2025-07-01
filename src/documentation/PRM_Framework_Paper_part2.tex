@@ -1,0 +1,170 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Research Questions}
+This research addresses the following questions:
+
+\begin{enumerate}
+\item How can we provide robust security for HPC environments without introducing significant performance overhead?
+\item Can process ancestry analysis provide sufficient context for making accurate security decisions?
+\item How can we efficiently implement process ancestry-based security in the Linux kernel?
+\item What performance characteristics are necessary for a security solution to be viable in HPC environments?
+\end{enumerate}
+
+\subsection{Requirements}
+
+\subsubsection{Functional Requirements}
+\begin{itemize}
+\item The framework must intercept and filter system calls based on configurable policies
+\item Security decisions must consider process ancestry (current process, parent, grandparent)
+\item The framework must support different actions (accept, reject, redirect) based on rule matches
+\item The framework must detect and prevent privilege escalation attempts
+\item The framework must provide protection for containerized environments
+\end{itemize}
+
+\subsubsection{Non-Functional Requirements}
+\begin{itemize}
+\item Performance overhead must be minimal ($<$3\% for system calls)
+\item Memory footprint must be small and scale linearly with system size
+\item The framework must be compatible with existing Linux distributions
+\item Configuration must be intuitive and manageable for system administrators
+\end{itemize}
+
+\subsubsection{Constraints}
+\begin{itemize}
+\item The framework must operate within the Linux kernel security model
+\item Implementation must use established kernel interfaces (eBPF, LSM)
+\item The solution must not require modifications to applications
+\end{itemize}
+
+\subsection{Validation Methodology}
+To validate that our solution meets the requirements, we:
+
+\begin{enumerate}
+\item Implemented a prototype of the PRM Framework using eBPF technology
+\item Developed a comprehensive test suite covering various security scenarios
+\item Conducted performance benchmarks comparing PRM with existing solutions
+\item Deployed the framework in a test HPC environment with real scientific workloads
+\end{enumerate}
+
+\section{PRM Framework Design}
+\label{sec:design}
+
+\subsection{Architecture Overview}
+Figure \ref{fig:architecture} illustrates the high-level architecture of the PRM Framework.
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.9\columnwidth}{
+\centering
+\texttt{
+\begin{tabular}{l}
+                                 PRM FRAMEWORK ARCHITECTURE \\
++-----------------------------------------------------------------------------+ \\
+|                                                                             | \\
+|  +---------------+                                                          | \\
+|  |  System Call  |                                                          | \\
+|  +-------+-------+                                                          | \\
+|          |                                                                  | \\
+|          v                                                                  | \\
+|  +---------------+     Cache Hit     +---------------+                      | \\
+|  | Cache Lookup  +------------------>|  Allow/Deny   |                      | \\
+|  +-------+-------+                   +---------------+                      | \\
+|          | Cache Miss                                                       | \\
+|          v                                                                  | \\
+|  +---------------+                                                          | \\
+|  |    Filters    |  Fast Decision    +---------------+                      | \\
+|  |  (Pre-check)  +------------------>|  Allow/Deny   |                      | \\
+|  +-------+-------+                   +---------------+                      | \\
+|          | Continue                                                         | \\
+|          v                                                                  | \\
+|  +---------------+                                                          | \\
+|  |   Verifier    |                                                          | \\
+|  |  (Ancestry    |                                                          | \\
+|  |   Checker)    |                                                          | \\
+|  +-------+-------+                                                          | \\
+|          |                                                                  | \\
+|          +-------------+                                                    | \\
+|          |             |                                                    | \\
+|          v             v                                                    | \\
+|  +---------------+    +---------------+                                     | \\
+|  | PRM Table     |    | PROG Handler  |                                     | \\
+|  | Rules Check   |    | (Specialized  |                                     | \\
+|  |               |    |  Security     |                                     | \\
+|  |               |    |  Logic)       |                                     | \\
+|  +-------+-------+    +-------+-------+                                     | \\
+|          |                    |                                             | \\
+|          +----------+---------+                                             | \\
+|                     |                                                       | \\
+|                     v                                                       | \\
+|             +---------------+                                               | \\
+|             |  Allow/Deny   |                                               | \\
+|             |   Decision    |                                               | \\
+|             +-------+-------+                                               | \\
+|                     |                                                       | \\
+|                     v                                                       | \\
+|             +---------------+                                               | \\
+|             | Update Cache  |                                               | \\
+|             +---------------+                                               | \\
+|                                                                             | \\
++-----------------------------------------------------------------------------+ \\
+\end{tabular}
+}
+}}
+\caption{PRM Framework Architecture showing the flow of system call processing through various components.}
+\label{fig:architecture}
+\end{figure}
+
+The PRM Framework consists of several key components:
+
+\begin{enumerate}
+\item \textbf{System Call Interception}: Captures system calls for security evaluation
+\item \textbf{Cache Mechanism}: Stores previous decisions to avoid redundant processing
+\item \textbf{Filters}: Lightweight pre-processing for quick decisions
+\item \textbf{Verifier}: Core component that examines process ancestry
+\item \textbf{PRM Table Rules}: Defines security policies based on process ancestry patterns
+\item \textbf{PROG Handlers}: Specialized security logic for specific system calls
+\end{enumerate}
+
+Figure \ref{fig:components} shows the relationships between these components.
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.9\columnwidth}{
+\centering
+\texttt{
+\begin{tabular}{l}
+                           COMPONENT RELATIONSHIPS \\
++-----------------------------------------------------------------------------+ \\
+|                                                                             | \\
+|  +---------------+                      +---------------+                   | \\
+|  |  PRM Config   |<---------------------+  PRM Table    |                   | \\
+|  |  (Security    |                      |  Rules        |                   | \\
+|  |   Policies)   |                      |  (Process     |                   | \\
+|  +---------------+                      |   Ancestry    |                   | \\
+|          \^{}                              |   Patterns)   |                   | \\
+|          |                              +---------------+                   | \\
+|          |                                      \^{}                           | \\
+|          |                                      |                           | \\
+|          |                                      |                           | \\
+|  +---------------+                      +---------------+                   | \\
+|  |  UID DB       |<---------------------+  Verifier     |                   | \\
+|  |  (Identity    |                      |  (Ancestry    |                   | \\
+|  |   Transition  |                      |   Checker)    |                   | \\
+|  |   Patterns)   |                      +---------------+                   | \\
+|  +---------------+                              \^{}                           | \\
+|                                                 |                           | \\
+|                                                 |                           | \\
+|                                         +---------------+                   | \\
+|                                         |  PROG         |                   | \\
+|                                         |  (Security    |                   | \\
+|                                         |   Handlers)   |                   | \\
+|                                         +---------------+                   | \\
+|                                                                             | \\
++-----------------------------------------------------------------------------+ \\
+\end{tabular}
+}
+}}
+\caption{Component Relationships showing how different parts of the PRM Framework interact with each other.}
+\label{fig:components}
+\end{figure}

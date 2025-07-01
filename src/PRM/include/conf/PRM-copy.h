@@ -1,0 +1,412 @@
+#ifndef FILTERING_SYSCALL_FRAMEWORK_PRM
+#define FILTERING_SYSCALL_FRAMEWORK_PRM
+
+/*  Mojtaba, 
+    This Is PRM , Process Relation Map , I hope you are able to create your pattern ;)
+
+
+
+    PRM Table Page Size ---> 5 * Process Relation
+    Number Of PRM Tables ---> 1 - 8 (Ordered) (If you want to check order faster put it by order --- it improves our performance)
+    Process Relation Names ---> 16 * Byte (extra bytes are eliminated)
+    
+    Notice: Without enough tracing never add roles !!!
+    Notice: Dynamic Orders , Take care of order which you put the roles
+*/
+
+/* Structure:
+    
+    PREFIX, PREFIX, PREFIX, ACTION, REDIRECT-INDEX(0<= x <=MAX_NUMBER_OF_RELATION-1), PROTECTED-ZONE(0-1), Hooks(0-N) (0 Means do not care)
+
+    Notice: Protected zone define specific zone for checking more roles , just only with REDIRECT action you can jump there and check those roles otherwise 
+            Protected zone flag true(1) never checks
+
+   Roles :
+    (X) means knownable process,  PREFIX_NOCARE means everything (*)
+
+    {PREFIX_NOCARE,PREFIX_NOCARE,PREFIX_NOCARE} ---> EveryThings (Deny Anything)
+
+    {X,PREFIX_NOCARE,PREFIX_NOCARE} ---> Focus on process (More Strict On Process)
+
+    {X,X,PREFIX_NOCARE} ---> Focus on process and parent (More Middle User-Space service like bash , zsh , fish , ssh, ...)
+
+    {X,PREFIX_NOCARE,X} ---> Focus on process and grand-parent (Any Isolation Level with docker , kvm , ... Restrict to process)
+
+    {PREFIX_NOCARE,X,PREFIX_NOCARE} ---> Focus on parent (High Strict Any process just Parent more focuse on exploits ...)
+
+    {PREFIX_NOCARE,X,X} ---> Focus on parent and grand-parent (High Strict Any root Isolation level apptainer , singolarity ...) 
+
+    {PREFIX_NOCARE,PREFIX_NOCARE,X} ---> Focus on grand-parent (High focus on Isolation)
+    
+    {X,X,X} ---> Focus On This pattern (For specific pattern which is knownable)
+
+   Actions :
+    ACCEPT, ---> Accept Matched Syscall
+    REJECT, ---> Reject Matched Syscall
+    REDIRECT, ---> Redirect to another role , * it (must) be higher than current role index , otherwise Redirect on current index causes Syscall being accepted
+    RETURN, ---> Return to the next prog , use RedirectIndex(0-32) , make sure the prog has been defined already, we have predefined prog (refers to development progress) (user RETURN 0 for any kind of test)
+    DEBUG, ---> Debug Matched Roles , (low overhead)
+   
+   Redirect:
+    0 <= X <= 99
+
+   Protect-Zone:
+    Protected ---> 1
+    Unprotected ---> 0
+   
+   Hooks:
+    FILE_PERMISSION, ---> Index 1
+    FILE_IOCTL,
+    FILE_MPROTECT,
+    FILE_RECEIVE,
+    FILE_SIGIOTASK,
+    FILE_OPEN,
+    SB_MOUNT,
+    SHM_ALLOC,
+    INODE_CREATE,
+    INODE_PERMISSION, ---> Index 10
+    INODE_SETATTR,
+    INODE_MKDIR,
+    SYSLOG,
+    SOCKET_CREATE,
+    SOCKET_CONNECT,
+    BPRM_SECURITY,
+    BPF,
+    SECURITY_CAPGET,
+    TASK_KILL,
+    TASK_ALLOC, ---> Index 20
+    TASK_MOVEMEMORY,
+    TASK_PTRACE,
+    TASK_SETPGID,
+    TASK_GETGID,
+    TASK_GETSID,
+    TASK_PRLIMIT,
+    TASK_SETPRLIMIT,
+    TASK_SETIOPRIO,
+    TASK_FIX_SETUID,
+    CRED_PREPARE ---> Index 30
+
+   __DEBUG__:
+    NOTHING,
+    LOWER,
+    NORMAL,
+    EXTERA,
+    HIGH,
+    VERBOSE
+*/
+
+#define MAX_NUMBER_OF_RELATION 150
+
+#define __DEBUG__ (NORMAL|LOWER)
+
+
+
+
+// ********************************************************************************//
+
+// KILL SIG Prog Zone //
+#define RELATION_0 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,30 ,0 ,19 // KILL SIG
+
+// INODE CREATE Prog Zone //
+#define RELATION_1 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,40 ,0 ,9 // INODE CREATE
+
+// SOCKET-OPEN Prog Zone //
+#define RELATION_2 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,50 ,0 ,15 // SOCKET
+
+// EXECV Prog Zone //
+#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,60 ,0 ,16 // EXECV
+
+// MEMORY PROC Prog Zone //
+#define RELATION_4 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,70 ,0 ,3 // MEM PROC
+
+#define RELATION_5 EMPTY
+
+#define RELATION_6 EMPTY
+
+#define RELATION_7 EMPTY
+
+#define RELATION_8 EMPTY
+
+#define RELATION_9 EMPTY
+
+#define RELATION_10 EMPTY
+
+#define RELATION_11 EMPTY
+
+#define RELATION_12 EMPTY
+
+#define RELATION_13 EMPTY
+
+#define RELATION_14 EMPTY
+
+#define RELATION_15 EMPTY
+
+#define RELATION_16 EMPTY
+
+#define RELATION_17 EMPTY
+
+#define RELATION_18 EMPTY
+
+#define RELATION_19 EMPTY
+
+#define RELATION_20 EMPTY
+
+#define RELATION_21 EMPTY
+
+#define RELATION_22 EMPTY
+
+#define RELATION_23 EMPTY
+
+#define RELATION_24 EMPTY
+
+#define RELATION_25 EMPTY
+
+#define RELATION_26 EMPTY
+
+#define RELATION_27 EMPTY
+
+#define RELATION_28 EMPTY
+
+#define RELATION_29 EMPTY
+
+#define RELATION_30 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,1 ,1 ,19
+
+#define RELATION_31 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,31 ,1 ,19
+
+#define RELATION_32 EMPTY
+
+#define RELATION_33 EMPTY
+
+#define RELATION_34 EMPTY
+
+#define RELATION_35 EMPTY
+
+#define RELATION_36 EMPTY
+
+#define RELATION_37 EMPTY
+
+#define RELATION_38 EMPTY
+
+#define RELATION_39 EMPTY
+
+#define RELATION_40 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,2 ,1 ,9
+
+#define RELATION_41 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,41 ,1 ,9
+
+#define RELATION_42 EMPTY
+
+#define RELATION_43 EMPTY
+
+#define RELATION_44 EMPTY
+
+#define RELATION_45 EMPTY
+
+#define RELATION_46 EMPTY
+
+#define RELATION_47 EMPTY
+
+#define RELATION_48 EMPTY
+
+#define RELATION_49 EMPTY
+
+#define RELATION_50 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,3 ,1 ,15
+
+#define RELATION_51 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,51 ,1 ,15
+
+#define RELATION_52 EMPTY
+
+#define RELATION_53 EMPTY
+
+#define RELATION_54 EMPTY
+
+#define RELATION_55 EMPTY
+
+#define RELATION_56 EMPTY
+
+#define RELATION_57 EMPTY
+
+#define RELATION_58 EMPTY
+
+#define RELATION_59 EMPTY
+
+#define RELATION_60 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,4 ,1 ,16
+
+#define RELATION_61 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,61 ,1 ,16
+
+#define RELATION_62 EMPTY
+
+#define RELATION_63 EMPTY
+
+#define RELATION_64 EMPTY
+
+#define RELATION_65 EMPTY
+
+#define RELATION_66 EMPTY
+
+#define RELATION_67 EMPTY
+
+#define RELATION_68 EMPTY
+
+#define RELATION_69 EMPTY
+
+#define RELATION_70 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,5 ,1 ,3
+
+#define RELATION_71 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,71 ,1 ,3
+
+#define RELATION_72 EMPTY
+
+#define RELATION_73 EMPTY
+
+#define RELATION_74 EMPTY
+
+#define RELATION_75 EMPTY
+
+#define RELATION_76 EMPTY
+
+#define RELATION_77 EMPTY
+
+#define RELATION_78 EMPTY
+
+#define RELATION_79 EMPTY
+
+#define RELATION_80 EMPTY
+
+#define RELATION_81 EMPTY
+
+#define RELATION_82 EMPTY
+
+#define RELATION_83 EMPTY
+
+#define RELATION_84 EMPTY
+
+#define RELATION_85 EMPTY
+
+#define RELATION_86 EMPTY
+
+#define RELATION_87 EMPTY
+
+#define RELATION_88 EMPTY
+
+#define RELATION_89 EMPTY
+
+#define RELATION_90 EMPTY
+
+#define RELATION_91 EMPTY
+
+#define RELATION_92 EMPTY
+
+#define RELATION_93 EMPTY
+
+#define RELATION_94 EMPTY
+
+#define RELATION_95 EMPTY
+
+#define RELATION_96 EMPTY
+
+#define RELATION_97 EMPTY
+
+#define RELATION_98 EMPTY
+
+#define RELATION_99 EMPTY
+
+#define RELATION_100 EMPTY
+
+#define RELATION_101 EMPTY
+
+#define RELATION_102 EMPTY
+
+#define RELATION_103 EMPTY
+
+#define RELATION_104 EMPTY
+
+#define RELATION_105 EMPTY
+
+#define RELATION_106 EMPTY
+
+#define RELATION_107 EMPTY
+
+#define RELATION_108 EMPTY
+
+#define RELATION_109 EMPTY
+
+#define RELATION_110 EMPTY
+
+#define RELATION_111 EMPTY
+
+#define RELATION_112 EMPTY
+
+#define RELATION_113 EMPTY
+
+#define RELATION_114 EMPTY
+
+#define RELATION_115 EMPTY
+
+#define RELATION_116 EMPTY
+
+#define RELATION_117 EMPTY
+
+#define RELATION_118 EMPTY
+
+#define RELATION_119 EMPTY
+
+#define RELATION_120 EMPTY
+
+#define RELATION_121 EMPTY
+
+#define RELATION_122 EMPTY
+
+#define RELATION_123 EMPTY
+
+#define RELATION_124 EMPTY
+
+#define RELATION_125 EMPTY
+
+#define RELATION_126 EMPTY
+
+#define RELATION_127 EMPTY
+
+#define RELATION_128 EMPTY
+
+#define RELATION_129 EMPTY
+
+#define RELATION_130 EMPTY
+
+#define RELATION_131 EMPTY
+
+#define RELATION_132 EMPTY
+
+#define RELATION_133 EMPTY
+
+#define RELATION_134 EMPTY
+
+#define RELATION_135 EMPTY
+
+#define RELATION_136 EMPTY
+
+#define RELATION_137 EMPTY
+
+#define RELATION_138 EMPTY
+
+#define RELATION_139 EMPTY
+
+#define RELATION_140 EMPTY
+
+#define RELATION_141 EMPTY
+
+#define RELATION_142 EMPTY
+
+#define RELATION_143 EMPTY
+
+#define RELATION_144 EMPTY
+
+#define RELATION_145 EMPTY
+
+#define RELATION_146 EMPTY
+
+#define RELATION_147 EMPTY
+
+#define RELATION_148 EMPTY
+
+#define RELATION_149 EMPTY
+
+#endif

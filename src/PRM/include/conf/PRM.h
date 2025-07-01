@@ -64,7 +64,7 @@
     SB_MOUNT,
     SHM_ALLOC,
     INODE_CREATE,
-    INODE_PERMISSION,
+    INODE_PERMISSION, ---> Index 10
     INODE_SETATTR,
     INODE_MKDIR,
     SYSLOG,
@@ -74,7 +74,7 @@
     BPF,
     SECURITY_CAPGET,
     TASK_KILL,
-    TASK_ALLOC,
+    TASK_ALLOC, ---> Index 20
     TASK_MOVEMEMORY,
     TASK_PTRACE,
     TASK_SETPGID,
@@ -82,7 +82,9 @@
     TASK_GETSID,
     TASK_PRLIMIT,
     TASK_SETPRLIMIT,
-    TASK_SETIOPRIO ---> Index 27
+    TASK_SETIOPRIO,
+    TASK_FIX_SETUID,
+    CRED_PREPARE ---> Index 30
 
    __DEBUG__:
     NOTHING,
@@ -93,221 +95,318 @@
     VERBOSE
 */
 
-#define MAX_NUMBER_OF_RELATION 100
+#define MAX_NUMBER_OF_RELATION 150
 
 #define __DEBUG__ (NORMAL|LOWER)
 
 
 
 
-// Super Direct hit roles
-#define RELATION_0 PREFIX_BASH, PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,0 ,0
+// ********************************************************************************//
 
-// High Direct hit roles
-#define RELATION_1 PREFIX_BASH, PREFIX_SSH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
+// KILL SIG Prog Zone //
+#define RELATION_0 "k8m3x7q1wz", "v5n9b2c6hy", "r4j8s1t0xl", RETURN, 1, 0, 19 // KILL SIG
 
-#define RELATION_2 PREFIX_FISH, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
+// INODE CREATE Prog Zone //
+#define RELATION_1 "p2h6k9m4qx", "w7z1v3n8by", "f0r5j2s6tl", RETURN, 2, 0, 9 // INODE CREATE
 
-#define RELATION_3 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REDIRECT ,80 ,0 ,0
+// SOCKET-OPEN Prog Zone //
+#define RELATION_2 "q3w8e1r5ty", "a9s4d7f2gh", "z6x0c5v3bn", RETURN, 3, 0, 15 // SOCKET
 
-#define RELATION_4 PREFIX_ZSH, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
+// EXECV Prog Zone //
+#define RELATION_3 "m7n4b1v8cx", "l2k5j9h6gf", "p3q0w7e4rt", RETURN, 4, 0, 16 // EXECV
 
-// Super Indirect hit roles (Take care of these Roles Are so General Roles) Redirect These Roles to Protected Zone and check it out carefully
-#define RELATION_5 PREFIX_NOCARE, PREFIX_BASH ,PREFIX_NOCARE ,REDIRECT ,90 ,0 ,0
+// MEMORY PROC Prog Zone //
+#define RELATION_4 "y8u2i5o9pa", "s6d1f4g7hj", "k0l3z9x5cv", RETURN, 5, 0, 3 // MEM PROC
 
-#define RELATION_6 PREFIX_NOCARE, PREFIX_FISH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
+#define RELATION_5 "xk7m9p2qwz", "n4v8b1c5hy", "r3j6s0t9xl", RETURN, 1, 0, 19
 
-#define RELATION_7 PREFIX_NOCARE, PREFIX_ZSH ,PREFIX_NOCARE ,DEBUG ,0 ,0 ,0
+#define RELATION_6 "f2h8k4m7qx", "w9z3v6n1by", "p5r0j8s2tl", RETURN, 2, 0, 9
 
-// Focus on python slurmstepd script level
-#define RELATION_8 PREFIX_PYTHON, PREFIX_NOCARE ,"slurmstepd" ,DEBUG ,0 ,0 ,0
+#define RELATION_7 "q1w5e9r3ty", "a7s2d6f0gh", "z4x8c3v7bn", RETURN, 3, 0, 15
 
-// Focus on bash slurmstepd script level
-#define RELATION_9 PREFIX_BASH, PREFIX_NOCARE ,"slurmstepd" ,DEBUG ,0 ,0 ,0
+#define RELATION_8 "m6n2b9v5cx", "l3k7j1h4gf", "p0q8w4e6rt", RETURN, 4, 0, 16
 
-// High Strict slurmstepd script level
-#define RELATION_10 PREFIX_NOCARE, PREFIX_NOCARE ,"slurmstepd" ,DEBUG ,0 ,0 ,0
+#define RELATION_9 "y5u8i2o6pa", "s1d4f7g0hj", "k9l3z6x2cv", RETURN, 5, 0, 3
 
-// If Found Any containerd - docker Redirect To Docker Zone
-#define RELATION_11 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,50 ,0 ,0
+#define RELATION_10 "b3n7m1k5jh", "g9f2d6s0aq", "w8e4r7t1yu", RETURN, 1, 0, 19
 
-#define RELATION_12 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SH ,DEBUG ,0 ,0 ,0
+#define RELATION_11 "i6o0p3a7sl", "d2f5g8h1jk", "l4z7x9c6vb", RETURN, 2, 0, 9
 
-#define RELATION_13 EMPTY
+#define RELATION_12 "n8m2k6j4hg", "f1d5s9a3qw", "e7r0t4y8ui", RETURN, 3, 0, 15
 
-#define RELATION_14 EMPTY
+#define RELATION_13 "o2p6a0s4df", "g8h1j5k9lz", "x3c7v1b5nm", RETURN, 4, 0, 16
 
-#define RELATION_15 EMPTY
+#define RELATION_14 "q4w8e2r6ty", "u9i3o7p1as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_16 EMPTY
+#define RELATION_15 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_17 EMPTY
+#define RELATION_16 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_18 EMPTY
+#define RELATION_17 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_19 EMPTY
+#define RELATION_18 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-#define RELATION_20 EMPTY
+#define RELATION_19 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_21 EMPTY
+#define RELATION_20 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_22 EMPTY
+#define RELATION_21 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_23 EMPTY
+#define RELATION_22 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_24 EMPTY
+#define RELATION_23 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_25 EMPTY
+#define RELATION_24 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_26 EMPTY
+#define RELATION_25 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_27 EMPTY
+#define RELATION_26 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_28 EMPTY
+#define RELATION_27 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_29 EMPTY
+#define RELATION_28 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-#define RELATION_30 EMPTY
+#define RELATION_29 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_31 EMPTY
+#define RELATION_30 "b1n5m8k2jh", "g4f7d3s6aq", "w9e0r2t5yu", RETURN, 1, 1, 19
 
-#define RELATION_32 EMPTY
+#define RELATION_31 "i3o7p1a4sl", "d8f2g5h9jk", "l6z3x0c7vb", RETURN, 1, 1, 19
 
-#define RELATION_33 EMPTY
+#define RELATION_32 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_34 EMPTY
+#define RELATION_33 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_35 EMPTY
+#define RELATION_34 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_36 EMPTY
+#define RELATION_35 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_37 EMPTY
+#define RELATION_36 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_38 EMPTY
+#define RELATION_37 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_39 EMPTY
+#define RELATION_38 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_40 EMPTY
+#define RELATION_39 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_41 EMPTY
+#define RELATION_40 "n0m4k7j2hg", "f5d8s1a6qw", "e3r9t6y2ui", RETURN, 2, 1, 9
 
-#define RELATION_42 EMPTY
+#define RELATION_41 "o4p8a2s5df", "g1h6j0k3lz", "x7c2v9b1nm", RETURN, 2, 1, 9
 
-#define RELATION_43 EMPTY
+#define RELATION_42 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-#define RELATION_44 EMPTY
+#define RELATION_43 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_45 EMPTY
+#define RELATION_44 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_46 EMPTY
+#define RELATION_45 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_47 EMPTY
+#define RELATION_46 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_48 EMPTY
+#define RELATION_47 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_49 EMPTY
+#define RELATION_48 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-// Docker Protect Zone , Focus More To Strict it
-#define RELATION_50 "runc", "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1 ,0
+#define RELATION_49 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_51 PREFIX_PYTHON, "containerd-shim" , PREFIX_NOCARE ,REJECT ,0 ,1 ,0
+#define RELATION_50 "q6w0e4r8ty", "u2i7o1p5as", "d9f3g7h4jk", RETURN, 3, 1, 15
 
-#define RELATION_52 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,REDIRECT ,52 ,1 ,0
+#define RELATION_51 "l8z2x6c0vb", "n5m1k4j7hg", "f3d6s9a2qw", RETURN, 5, 1, 15
 
-#define RELATION_53 EMPTY
+#define RELATION_52 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_54 EMPTY
+#define RELATION_53 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_55 EMPTY
+#define RELATION_54 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-#define RELATION_56 EMPTY
+#define RELATION_55 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_57 EMPTY
+#define RELATION_56 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_58 EMPTY
+#define RELATION_57 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_59 EMPTY
+#define RELATION_58 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_60 EMPTY
+#define RELATION_59 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_61 EMPTY
+#define RELATION_60 "e7r1t5y9ui", "o3p6a0s4df", "g8h2j5k1lz", RETURN, 4, 1, 16
 
-#define RELATION_62 EMPTY
+#define RELATION_61 "x4c8v2b6nm", "q0w5e9r3ty", "u7i1o4p8as", RETURN, 5, 1, 16
 
-#define RELATION_63 EMPTY
+#define RELATION_62 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_64 EMPTY
+#define RELATION_63 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_65 EMPTY
+#define RELATION_64 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_66 EMPTY
+#define RELATION_65 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_67 EMPTY
+#define RELATION_66 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-#define RELATION_68 EMPTY
+#define RELATION_67 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_69 EMPTY
+#define RELATION_68 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_70 EMPTY
+#define RELATION_69 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_71 EMPTY
+#define RELATION_70 "d2f6g0h4jk", "l9z3x7c1vb", "n6m0k3j8hg", RETURN, 5, 1, 3
 
-#define RELATION_72 EMPTY
+#define RELATION_71 "f5d9s3a7qw", "e1r4t8y2ui", "o6p0a3s7df", RETURN, 3, 1, 3
 
-#define RELATION_73 EMPTY
+#define RELATION_72 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_74 EMPTY
+#define RELATION_73 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_75 EMPTY
+#define RELATION_74 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_76 EMPTY
+#define RELATION_75 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_77 EMPTY
+#define RELATION_76 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_78 EMPTY
+#define RELATION_77 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_79 EMPTY
+#define RELATION_78 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-// SSH Protected Zone //
-#define RELATION_80 PREFIX_SSH, PREFIX_SSH ,PREFIX_SSH ,ACCEPT ,0 ,1 ,0 // If you are in this Role , SSHD is working with file_permission Hook Number 1 (file_permission)
+#define RELATION_79 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_81 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_SSH ,REDIRECT ,81 ,1 ,0 // End Of Zone
+#define RELATION_80 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_82 EMPTY
+#define RELATION_81 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_83 EMPTY
+#define RELATION_82 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_84 EMPTY
+#define RELATION_83 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_85 EMPTY
+#define RELATION_84 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_86 EMPTY
+#define RELATION_85 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_87 EMPTY
+#define RELATION_86 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_88 EMPTY
+#define RELATION_87 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_89 EMPTY
+#define RELATION_88 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
 
-// Bash - Fish - SH  Protect Zone //
-#define RELATION_90 PREFIX_NOCARE, PREFIX_BASH ,"su" , ACCEPT ,0 ,1 ,0 // Middle Bash has enough permission otherwise it is not able to have SU exp: grep -> bash -> su , any syscall
+#define RELATION_89 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
 
-#define RELATION_91 PREFIX_NOCARE, PREFIX_BASH ,"su" , REDIRECT ,91 ,1 ,0 //End of Zone
+#define RELATION_90 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
 
-#define RELATION_92 EMPTY
+#define RELATION_91 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
 
-#define RELATION_93 EMPTY
+#define RELATION_92 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
 
-#define RELATION_94 EMPTY
+#define RELATION_93 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
 
-#define RELATION_95 EMPTY
+#define RELATION_94 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
 
-#define RELATION_96 EMPTY
+#define RELATION_95 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
 
-#define RELATION_97 EMPTY
+#define RELATION_96 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
 
-#define RELATION_98 EMPTY
+#define RELATION_97 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
 
-#define RELATION_99 EMPTY
+#define RELATION_98 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
+
+#define RELATION_99 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
+
+#define RELATION_100 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
+
+#define RELATION_101 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
+
+#define RELATION_102 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
+
+#define RELATION_103 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
+
+#define RELATION_104 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
+
+#define RELATION_105 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
+
+#define RELATION_106 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
+
+#define RELATION_107 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
+
+#define RELATION_108 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
+
+#define RELATION_109 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
+
+#define RELATION_110 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
+
+#define RELATION_111 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
+
+#define RELATION_112 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
+
+#define RELATION_113 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
+
+#define RELATION_114 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
+
+#define RELATION_115 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
+
+#define RELATION_116 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
+
+#define RELATION_117 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
+
+#define RELATION_118 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
+
+#define RELATION_119 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
+
+#define RELATION_120 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
+
+#define RELATION_121 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
+
+#define RELATION_122 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
+
+#define RELATION_123 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
+
+#define RELATION_124 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
+
+#define RELATION_125 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
+
+#define RELATION_126 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
+
+#define RELATION_127 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
+
+#define RELATION_128 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
+
+#define RELATION_129 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
+
+#define RELATION_130 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
+
+#define RELATION_131 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
+
+#define RELATION_132 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
+
+#define RELATION_133 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
+
+#define RELATION_134 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
+
+#define RELATION_135 "l6z0x4c8vb", "n2m6k0j4hg", "f8d2s6a0qw", RETURN, 1, 0, 19
+
+#define RELATION_136 "e4r8t2y6ui", "o0p4a8s2df", "g6h0j4k8lz", RETURN, 2, 0, 9
+
+#define RELATION_137 "x2c6v0b4nm", "q8w2e6r0ty", "u4i8o2p6as", RETURN, 3, 0, 15
+
+#define RELATION_138 "d0f4g8h2jk", "l6z0x4c8vb", "n2m6k0j4hg", RETURN, 4, 0, 16
+
+#define RELATION_139 "f8d2s6a0qw", "e4r8t2y6ui", "o0p4a8s2df", RETURN, 5, 0, 3
+
+#define RELATION_140 "g6h0j4k8lz", "x2c6v0b4nm", "q8w2e6r0ty", RETURN, 1, 0, 19
+
+#define RELATION_141 "u4i8o2p6as", "d0f4g8h2jk", "l6z0x4c8vb", RETURN, 2, 0, 9
+
+#define RELATION_142 "n2m6k0j4hg", "f8d2s6a0qw", "e4r8t2y6ui", RETURN, 3, 0, 15
+
+#define RELATION_143 "o0p4a8s2df", "g6h0j4k8lz", "x2c6v0b4nm", RETURN, 4, 0, 16
+
+#define RELATION_144 "q8w2e6r0ty", "u4i8o2p6as", "d0f4g8h2jk", RETURN, 5, 0, 3
+
+#define RELATION_145 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 1, 0, 19
+
+#define RELATION_146 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 2, 0, 9
+
+#define RELATION_147 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 3, 0, 15
+
+#define RELATION_148 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 4, 0, 16
+
+#define RELATION_149 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 5, 0, 3
 
 #endif

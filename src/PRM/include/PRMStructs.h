@@ -2,12 +2,38 @@
 #define FILTERING_SYSCALL_FRAMEWORK_STRUCTS
 
 #include "conf/PRM.h"
+#include <include/baseheaders.h>
+#include <include/BTFFunctions.h>
 
 // Mojtaba :) , The Structures Notice never change till you know what you are doing here // ***
 // Use Stack Programming To Design The Whole PRM //
 // Stack Is Faster Than BFP Helper Calls For Allocating Data //
 // Here The Structure Is Between 512 Byte Allocation , So I Would Prefer Develop It As Stack //
 // Try to make hook enum because of any tasks comprise more than 2 or 3 differ syscalls , as well as differ linux distro //
+
+#ifndef MAGIC_VALUE
+    #define MAGIC_VALUE 0xDEADBEEF
+#endif
+
+#define MAX_CACHE_ENTRIES 5
+
+#define RET_ACCEPT return 0;
+#define RET_REJECT return 1;
+#define RET_ACCEPT_FORCEFULLY return 2;
+
+struct cache_entry{
+    __u32 hash; // hash fingerprint
+    bool is_valid: 1;
+};
+
+struct cache_record{
+    __s8 direct_relation;
+    bool is_valid_entries : 1;
+    __u8 active_entries;
+    __u8 prog_tb_id; // program table id
+    struct cache_entry cache_entries[MAX_CACHE_ENTRIES];
+};
+
 enum PRM_DEBUG_LEVEL_ENUM{
     NOTHING = 0,
     LOWER = 1 << 0,
@@ -18,7 +44,7 @@ enum PRM_DEBUG_LEVEL_ENUM{
 };
 
 enum PRM_HOOK_ENUM{
-    NONE_CELL, // ---> Mimic From Kernel Index 0 Always Nothing ;)
+    NONE_CELL,
     FILE_PERMISSION,
     FILE_IOCTL,
     FILE_MPROTECT,
@@ -46,7 +72,9 @@ enum PRM_HOOK_ENUM{
     TASK_GETSID,
     TASK_PRLIMIT,
     TASK_SETPRLIMIT,
-    TASK_SETIOPRIO
+    TASK_SETIOPRIO,
+    TASK_FIX_SETUID,
+    CRED_PREPARE
 };
 
 enum PRM_STATE_ENUM {
@@ -56,6 +84,76 @@ enum PRM_STATE_ENUM {
     BROKEN,
     TOO_MANY_ROLES,
     NON_OF_GENERAL_ROLE
+};
+
+struct SelfPID {
+    __u32 pid; 
+    __u64 magic;
+};
+
+struct UniqueKey {
+    __u32 pid; // process id
+    __u32 tpid; // thread id
+    enum PRM_HOOK_ENUM hook; // syscall
+    struct cache_record crecord; // cache records
+};
+
+// Do not forget , Add Context Struct for your Prog //
+// Implement me more --> Mojtaba :)
+struct args_inode_create_t {
+    struct path *dir;
+    struct dentry *dentry;
+    int flags;
+    umode_t mode;
+};
+
+struct args_socket_create_t{
+    int family;
+    int type;
+    int protocol;
+    int kern;
+};
+
+struct args_socket_connect_t{
+    struct socket *sock;
+    struct sockaddr *address;
+    int addrlen;
+};
+
+struct args_file_open_t {
+    struct file *file;
+};
+
+struct args_bprm_check_security_t{
+    struct linux_binprm *bprm;
+};
+
+struct args_file_mprotect_t{
+    struct vm_area_struct *vma;
+    unsigned long reqprot;
+    unsigned long prot;
+};
+
+struct args_task_kill_t{
+    struct task_struct *task;
+    struct kernel_siginfo *info;
+    int sig;
+    const struct cred *cred;
+};
+
+union lsm_args_u {
+    struct args_file_open_t file_open;
+    struct args_inode_create_t inode_create;
+    struct args_task_kill_t task_kill;
+    struct args_socket_create_t socket_create;
+    struct args_socket_connect_t socket_connect;
+    struct args_bprm_check_security_t bprm_check_security;
+    struct args_file_mprotect_t file_mprotect;
+};
+
+struct hooks_context_t{
+    struct UniqueKey key;
+    union lsm_args_u args;
 };
 
 struct prm_state {
@@ -77,9 +175,16 @@ struct process_relation {
     char grandparent[MAX_RELATION_PROCESSNAME];
     enum PROCESS_RELATION_ACTION_ENUM action;
     __u32 redirectIndex;
-    bool protectZone : 1;
+    bool protectZone:1;
     enum PRM_HOOK_ENUM hookType;
 };
+
+struct process_entry{
+    __u32 pid;
+    enum PRM_HOOK_ENUM hook;
+};
+
+const struct process_relation _prelation_empty_ SEC(".rodata") = {{""},{""},{""},NONE_ACTION,0,0,NONE_CELL};
 
 const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata") = {
     {RELATION_0},
@@ -181,11 +286,61 @@ const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata
     {RELATION_96},
     {RELATION_97},
     {RELATION_98},
-    {RELATION_99}
+    {RELATION_99},
+    {RELATION_100},
+    {RELATION_101},
+    {RELATION_102},
+    {RELATION_103},
+    {RELATION_104},
+    {RELATION_105},
+    {RELATION_106},
+    {RELATION_107},
+    {RELATION_108},
+    {RELATION_109},
+    {RELATION_110},
+    {RELATION_111},
+    {RELATION_112},
+    {RELATION_113},
+    {RELATION_114},
+    {RELATION_115},
+    {RELATION_116},
+    {RELATION_117},
+    {RELATION_118},
+    {RELATION_119},
+    {RELATION_120},
+    {RELATION_121},
+    {RELATION_122},
+    {RELATION_123},
+    {RELATION_124},
+    {RELATION_125},
+    {RELATION_126},
+    {RELATION_127},
+    {RELATION_128},
+    {RELATION_129},
+    {RELATION_130},
+    {RELATION_131},
+    {RELATION_132},
+    {RELATION_133},
+    {RELATION_134},
+    {RELATION_135},
+    {RELATION_136},
+    {RELATION_137},
+    {RELATION_138},
+    {RELATION_139},
+    {RELATION_140},
+    {RELATION_141},
+    {RELATION_142},
+    {RELATION_143},
+    {RELATION_144},
+    {RELATION_145},
+    {RELATION_146},
+    {RELATION_147},
+    {RELATION_148},
+    {RELATION_149}
 };
 
 struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, MAX_NUMBER_OF_RELATION);
     __type(key, u32);
     __type(value, struct process_relation);
@@ -210,12 +365,221 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
     __uint(max_entries, ALLOWED_PIDS);  
-    __type(key, u32);
-    __type(value, struct process_relation); 
+    __type(key, struct UniqueKey);
+    __type(value, struct cache_record); 
 } process_list SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 120);
+    __type(key, __u32);
+    __type(value, char[HUGE_STR]);
+} tmp_buffer_ SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 64);
+    __type(key, __u32);
+    __type(value, struct hooks_context_t);
+} _ctx_holder_ SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 64);
+    __type(key, __u32);
+    __type(value, struct cache_record);
+} _cache_record_holder_ SEC(".maps");
+
+struct empty_buffer{
+    char _buff_[HUGE_STR];
+};
+
+// Lineage //
+#define MAX_VECTOR_CELL 4
+#define MAX_VECTORS 19
+
+
+enum UID_VECTOR_ELEM{
+    UIDROOT = 0,
+    UIDEMPTYCELL = 1,
+    UIDWILDCARD= 2,
+    UIDMISMATCH = 3
+};
+
+enum UID_VECTOR_SEVERITY {
+    EASY = 0,             // Not checked or not applicable
+    BASE = 1,               // Normal base behavior
+    BENIGN = 2,             // Expected, non-privileged action
+    LOW_RISK = 3,           // Mildly uncommon, likely okay
+    SUSPICIOUS = 4,         // Unusual pattern, worth watching
+    ANOMALOUS = 5,          // Unexpected, but unclear intent
+    ELEVATED = 6,           // Privilege escalation likely
+    ESCALATED = 7,          // Confirmed setuid/sudo jump
+    DANGEROUS = 8,          // Likely malicious behavior
+    CRITICAL = 9,           // High-confidence exploit
+    ROOT_COMPROMISED = 10   // Confirmed root takeover path
+};
+
+struct UIDVector {
+    __u8 severity;
+    __u8 val[MAX_VECTOR_CELL];
+};
+
+struct BaseDB {
+    struct UIDVector entries[MAX_VECTORS];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_VECTORS);
+    __type(key, __u32);
+    __type(value, struct UIDVector);
+} uid_base_map SEC(".maps");
+
+
+struct UIDVectorAncestors {
+    __u8 val[MAX_ANCESTORS];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 64);
+    __type(key, __u32);
+    __type(value, struct UIDVectorAncestors);
+} tmp_lineage SEC(".maps");
+
+// Pretrained Vectors //
+const struct BaseDB base SEC(".rodata")= { .entries = {
+        // Case: Normal root actions like daemon
+        {.severity=EASY,
+        .val={0, 0, 0, 0}
+        },
+
+        // Case: Normal root actions , root used another user ! <--- It depends on situation can be esclated
+        // current space is root : sudo -u trustuser kill -9 PID , sudo -u trustuser bash -c "sudo kill -9 PID" ....
+        {.severity=BASE,
+        .val={0, 2, 0, 0}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 0, 0, 2}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 0, 2, 2}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 2, 2, 2}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 2, 0, 2}
+        },
+
+        // Case: UID Normal actions
+        {.severity=LOW_RISK,
+        .val={2, 2, 2, 2}
+        },
+
+        // Case: UID mismatch + root 
+        {.severity=CRITICAL,
+        .val={0, 2, 2, 3}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 2, 3, 2}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 3, 2, 2}
+        },
+        
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 0, 3, 2}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 0, 3, 3}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 3, 3, 2}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 3, 3, 3}
+        },
+
+        // Case: Mismatch at the end (post-spawn)
+        {.severity=ANOMALOUS,
+        .val={2, 2, 2, 3}
+        },
+
+        // Case: Mismatch + none root
+        {.severity=ANOMALOUS,
+        .val={2, 2, 3, 2}
+        },
+
+        // Case: Normal user → double root
+        {.severity=ANOMALOUS,
+        .val={2, 3, 2, 2}
+        },
+
+        // Case: Alternating mismatch & root
+        {.severity=ANOMALOUS,
+        .val={3, 2, 2, 2}
+        },
+
+        // Case: Syscalls come from Normal User / sometimes the last 0 is daemon
+        {.severity=LOW_RISK,
+        .val={2, 2, 2, 0}
+        }
+    }
+};
+
+const struct cache_record _emptycacherecord_ SEC(".rodata") = {0};
+
+const struct empty_buffer _emptybuffer_ SEC(".rodata") = {{0}};
+
+const struct hooks_context_t _emptyctx_ SEC(".rodata") = {0};
+
+const struct UIDVectorAncestors _emptylineage_ SEC(".rodata") = {0};
+
+static char * char_memory_allocate(__u32 * ukey, char * data);
+
+static char * char_memory_read(__u32 * ukey);
+
+static __u32 char_memory_delete(__u32 * ukey);
+
+static struct hooks_context_t * ctx_memory_allocate(__u32 * ukey);
+
+static struct UIDVectorAncestors * lineage_memory_allocate(__u32 * ukey, struct UIDVectorAncestors * data);
+
+static struct UIDVectorAncestors * lineage_memory_read(__u32 *ukey);
+
+static __u32 lineage_memory_delete(__u32 *ukey);
+
+static struct cache_record * cache_record_memory_allocate(__u32 * ukey, struct cache_record * data);
+
+static struct cache_record * cache_record_memory_read(__u32 *ukey);
+
+static __u32 cache_record_memory_delete(__u32 *ukey);
 
 static void init_relation_map();
 
 static void Load_PRM();
+
+static __u32 jenkinsHash(__u32 a, __u32 b, __u32 c);
 
 #endif

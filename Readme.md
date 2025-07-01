@@ -27,6 +27,40 @@ At the core lies **PRM**: a lightweight, table-driven rule engine integrated int
 
 ---
 
+## Development Procedure 
+RIGHT?! 😤
+BPF is like writing C... with handcuffs on... inside a bank vault... during a fire drill.
+BPF isn't designed for luxury dev life — it's built for:
+```
+    Safety
+
+    Verifiability
+
+    Determinism
+
+That means:
+
+    No recursion
+
+    No loops unless the verifier can prove they'll finish
+
+    No dynamic memory
+
+    Stack? Only 512 bytes TOTAL for all your frames 😬
+
+But here's the flip side:
+
+Because of these restrictions, BPF programs can:
+
+    Be loaded into the kernel safely
+
+    Never crash the system
+
+    Run fast, close to syscall-level
+
+    Be sandboxed like a champ
+```
+
 ## ⚙️ How PRM Works
 
 PRM evaluates syscall events against a set of predefined rules based on the calling process’s ancestry.

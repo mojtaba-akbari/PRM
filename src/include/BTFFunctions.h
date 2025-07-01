@@ -42,9 +42,36 @@ static __u32 memcmp(const void *s1, const void *s2, const __u32 n) {
 // Define Len to just make it safer than simple \0 way
 // No need to use bpf helper , it causes extra heavy jumps
 static __u32 strcmp(const char *s1, const char *s2, const __u32 len) {
+
+    if(s1[0] == '\0' || s2[0] == '\0') return 1;
+    
     for (__u32 i = 0; i < len; i++) {
         if (s1[i] != s2[i]) return 1;  // Mismatch found
         if (s1[i] == '\0' && s2[i] == '\0') return 0;  // Both reached end
+    }
+
+    return 0;
+}
+// Mojtaba , strcmp_nolen
+// Notice , define MAX_ITR->MIN_ITR so short because of long loop
+// Define Len to just make it safer than simple \0 way
+// No need to use bpf helper , it causes extra heavy jumps
+static __u32 strcmp_nolen(const char *s1, const char *s2) {
+    for (__u32 i = 0; i < MAX_STR; i++) {
+        if (s1[i] != s2[i]) return 1;  // Mismatch found
+        if (s1[i] == '\0' && s2[i] == '\0') return 0;  // Both reached end
+    }
+    return 0;
+}
+// Mojtaba , strcmp_forceS1
+// Notice , define MAX_ITR->MIN_ITR so short because of long loop, However we focuse on the first string len - when s1len < s2len
+// Define Len to just make it safer than simple \0 way
+// No need to use bpf helper , it causes extra heavy jumps
+static __u32 strcmp_forceS1(const char *s1, const char *s2) {
+    for (__u32 i = 0; i < MAX_STR; i++) {
+        if (s1[i] == '\0') return 0;  // s1 reached end with match
+        if (s1[i] != s2[i]) return 1;  // Mismatch found
+        if (s2[i] == '\0') return 0;  // s2 reached end
     }
     return 0;
 }
@@ -85,5 +112,39 @@ static bool strstr(const char *str, const char *substr, const __u32 len){
 
     return false;
 
+}
+static void itos(__u32 num, char *str, int max_len) {
+    int i = max_len - 2;
+    str[max_len - 1] = '\0';
+
+    if (num == 0) {
+        str[i--] = '0';
+    } else {
+        for (; num > 0 && i >= 0; num /= 10, i--) {
+            str[i] = '0' + (num % 10);
+        }
+    }
+
+    int j = 0;
+    i++;
+    while (i < max_len - 1) {
+        str[j++] = str[i++];
+    }
+    str[j] = '\0';
+}
+// Mojtaba , String to u32 - DJB2//
+static __u32 str_to_u32(char *s) {
+    if (!s) return SEED;
+    __u32 hash = SEED;  // seed
+    char c;
+    for (int i = 0; i < MAX_STR && (c = s[i]) != '\0'; i++) {
+        hash = ((hash << 5) + hash) + (__u8)c;  // hash * 33 + c
+    }
+    return hash;
+}
+// Mojtaba , Make tmp unique key //
+static __u32 generate_tmp_ukey(__u32 pid, __u32 tid){
+    __u64 time_ns = bpf_ktime_get_ns();
+    return pid ^ tid ^ (__u32)time_ns;
 }
 #endif

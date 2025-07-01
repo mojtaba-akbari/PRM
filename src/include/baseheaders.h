@@ -2,6 +2,14 @@
 // If you want to define your constant here take care of other elements //
 // Try to define constant then you do not need to get any headers from linux kernel //
 // it helps you to compile it by ecc directly :) do not ask me why //
+#ifndef SEED
+    #define SEED 5381
+#endif
+
+#ifndef NEGETIVE_UPDATE
+    #define NEGETIVE_UPDATE -1
+#endif
+
 #ifndef MAY_WRITE
     #define MAY_WRITE 0x2
 #endif
@@ -10,10 +18,29 @@
     #define TASK_COMM_LEN 16
 #endif
 
+#ifndef AF_NET
+    #define AF_NET 2
+#endif
+
 #ifndef EPERM
     #define EPERM 1
 #endif
 
+#ifndef PROT_READ
+    #define PROT_READ 0x1
+#endif
+
+#ifndef PROT_WRITE
+    #define PROT_WRITE 0x2
+#endif
+
+#ifndef PROT_EXEC
+    #define PROT_EXEC 0x4
+#endif
+
+#ifndef PROT_NONE
+    #define PROT_NONE 0x0
+#endif
 
 #ifndef ENOENT
     #define ENOENT 2
@@ -35,16 +62,36 @@
     #define PRM_STATE 1
 #endif
 
-#ifndef MAGIC_VALUE
-    #define MAGIC_VALUE 0xDEADBEEF
-#endif
-
 #ifndef SELF_PIDS
     #define SELF_PIDS 1
 #endif
 
+#ifndef CONFIG_CELL
+    #define CONFIG_CELL 16
+#endif
+
+#ifndef MAX_STR
+    #define MAX_STR 16
+#endif
+
+#ifndef LARGE_STR
+    #define LARGE_STR 32
+#endif
+
+#ifndef HUGE_STR
+    #define HUGE_STR 64
+#endif
+
+#ifndef MAX_STR_ARRAY_LEN
+    #define MAX_STR_ARRAY_LEN 3
+#endif
+
 #ifndef ALLOWED_PIDS
-    #define ALLOWED_PIDS 256
+    #define ALLOWED_PIDS 1024
+#endif
+
+#ifndef ALLOWED_PIDS_UID_MAP
+    #define ALLOWED_PIDS_UID_MAP 256
 #endif
 
 #ifndef MAX_LEN
@@ -59,12 +106,20 @@
     #define MAX_RELATION_PROCESSNAME 16
 #endif
 
+#ifndef MAX_DIR_ITR
+    #define MAX_DIR_ITR 10
+#endif
+
 #ifndef MAX_ITR
     #define MAX_ITR 256
 #endif
 
 #ifndef MIN_ITR
     #define MIN_ITR 64
+#endif
+
+#ifndef MAX_ANCESTORS
+    #define MAX_ANCESTORS 16
 #endif
 
 #ifndef MAX_DST_ADDRS
@@ -84,7 +139,7 @@
 #endif
 
 #ifndef HOME_DIR
-    #define HOME_DIR "/home/"
+    #define HOME_DIR "home"
 #endif
 
 #ifndef HOME_DIR_LEN
@@ -92,12 +147,17 @@
 #endif
 
 #ifndef TMP_DIR
-    #define TMP_DIR "/tmp/"
+    #define TMP_DIR "tmp"
 #endif
 
 #ifndef TMP_DIR_LEN
     #define TMP_DIR_LEN 5
 #endif
+
+#ifndef MAX_FILE_NAME
+    #define MAX_FILE_NAME 32
+#endif
+
 
 #ifndef REDIRECTED_DIR
     #define REDIRECTED_DIR "/"
@@ -164,6 +224,13 @@
     #define PREFIX_SH_LEN 2
 #endif
 
+#ifndef PREFIX_SUDO
+    #define PREFIX_SUDO "sudo"
+#endif
+#ifndef PREFIX_SUDO_LEN
+    #define PREFIX_SUDO_LEN 4
+#endif
+
 #ifndef PREFIX_NOCARE
     #define PREFIX_NOCARE "*"
 #endif
@@ -173,6 +240,8 @@
 
 
 // MACRO PREPROCESSOR //
+#define __NAME__(x) x x
 #define IS_NUMERIC(x) (0 * x + 0)
 #define FULLY_DEBUG(x,z,y) do { if ((x&z) != 0) { y; } } while (0)
 #define ASSERT_RUNTIME(x,y) do { if(!x) { y; } } while (0)
+#define CONFIG_SECTION(name) SEC(".rodata")

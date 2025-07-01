@@ -1,0 +1,77 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\title{PRM Framework: Process Ancestry-Based Security for HPC Environments}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Modern High-Performance Computing (HPC) environments face security challenges balancing protection with performance. This paper presents the PRM Framework, a process ancestry-based security solution for Linux that provides fine-grained control over system calls with minimal overhead (0.5-2\% vs. SELinux's 5-10\%).
+\end{abstract}
+
+\section{Introduction}
+Security in HPC environments requires minimal overhead while addressing containerization risks. Traditional solutions like SELinux and AppArmor introduce performance penalties or lack context awareness.
+
+\subsection{Contributions}
+\begin{itemize}
+\item Novel process ancestry-based security with minimal performance impact
+\item Comprehensive architecture for efficient system call filtering
+\item Performance benchmarks showing significant advantages over traditional solutions
+\item Flexible policy framework for process ancestry-based rules
+\end{itemize}
+
+\section{Background}
+\subsection{Linux Security Mechanisms}
+Current Linux security includes DAC, MAC (SELinux/AppArmor), capabilities, namespaces, and seccomp.
+
+\subsection{HPC Security Challenges}
+HPC environments face unique challenges: performance sensitivity, complex workflows requiring privileges, multi-tenancy, and containerization risks.
+
+\section{Related Work}
+Prior work includes Systrace, Seccomp-BPF, SPEAKER, Docker Security, gVisor, and HPC-specific solutions.
+
+\section{Methodology}
+\subsection{Research Questions}
+We address how to provide robust security without performance overhead, using process ancestry for context.
+
+\subsection{Requirements}
+Functional requirements include system call filtering based on process ancestry. Non-functional requirements include minimal overhead (<3\%) and compatibility with existing systems.
+
+\section{PRM Framework Design}
+\subsection{Architecture Overview}
+The PRM Framework consists of:
+\begin{itemize}
+\item System Call Interception
+\item Cache Mechanism
+\item Filters
+\item Verifier (Process Ancestry Checker)
+\item PRM Table Rules
+\item PROG Handlers
+\end{itemize}
+
+\subsection{Process Ancestry Analysis}
+The framework extracts command names from current process, parent, and grandparent to make security decisions.
+
+\section{Evaluation}
+\subsection{Performance Comparison}
+PRM Framework shows 0.5-2\% system call overhead compared to SELinux (5-10\%) and AppArmor (3-7\%).
+
+\subsection{Performance Benchmarks}
+Benchmarks on LINPACK, STREAM, IOR, and IMB-MPI show minimal impact on HPC workloads.
+
+\subsection{Security Effectiveness}
+The framework successfully prevented container escape attempts and privilege escalation.
+
+\section{Discussion}
+\subsection{Limitations}
+Current limitations include configuration complexity and lack of integration with SIEM systems.
+
+\section{Conclusion}
+The PRM Framework provides a novel approach to Linux security well-suited for HPC environments, with future work focusing on automated rule generation and machine learning integration.
+
+\end{document}
