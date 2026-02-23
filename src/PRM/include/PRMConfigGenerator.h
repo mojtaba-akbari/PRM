@@ -72,27 +72,50 @@
 // Checkers //
 // -> Mojtaba Implement me more
 #define checkValidElemConfigNUMBER(elem, struct, behave) \
-                                    \
+                                    do{\
                                         int len=sizeof(struct._holder_) / sizeof(struct._holder_[0]);     \
                                         for(int i=0;i<len;i++){     \
-                                            if (elem == struct._holder_[i])    \
-                                                return behave;   \
-                                        }
+                                            if (elem == struct._holder_[i]){    \
+                                                behave   \
+                                                break; \
+                                            } \
+                                        } \
+                                    } \
+                                    while(0);
 
 #define checkValidElemConfigSTR(elem, struct, behave) \
-                                    \
+                                    do{\
                                         int len=sizeof(struct._holder_) / sizeof(struct._holder_[0]);     \
                                         for(int i=0;i<len;i++){     \
-                                            if (strcmp_nolen(elem, struct._holder_[i]) == 0)    \
-                                                return behave;   \
-                                        }
+                                            if (strcmp_nolen(elem, struct._holder_[i]) == 0) {   \
+                                                behave   \
+                                                break; \
+                                            } \
+                                        } \
+                                    }\
+                                    while(0);
 
 #define checkValidElemConfigForceSTRLen(elem, struct, behave) \
-                                    \
+                                    do{\
                                         int len=sizeof(struct._holder_) / sizeof(struct._holder_[0]);     \
                                         for(int i=0;i<len;i++){     \
-                                            if (strcmp_forceS1(struct._holder_[i], elem) == 0)    \
-                                                return behave;   \
-                                        }
+                                            if (strcmp_forceS1(struct._holder_[i], elem) == 0) {   \
+                                                behave \
+                                                break; \
+                                            }  \
+                                        }   \
+                                    }   \
+                                    while(0);
 
+#define checkValidElemConfigForceSTRLenFocusOnElem(elem, struct, behave) \
+                                    do{\
+                                        int len=sizeof(struct._holder_) / sizeof(struct._holder_[0]);     \
+                                        for(int i=0;i<len;i++){     \
+                                            if (strcmp_forceS1(elem, struct._holder_[i]) == 0) {   \
+                                                behave \
+                                                break; \
+                                            }  \
+                                        }   \
+                                    }   \
+                                    while(0);
 #endif

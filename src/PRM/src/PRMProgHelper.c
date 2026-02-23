@@ -2,7 +2,7 @@
 #include "../../include/BTFFunctions.h"
 #include "../include/PRMProgStructs.h"
 
-// UID Section // Mojtaba Change Anything here will cause huge Chaose , do not change anything
+// UID Section // Mojjjak: Change Anything here will cause huge Chaose
 static bool is_containerized_root(struct task_struct *task) {
     struct task_struct *parent = BPF_CORE_READ(task, real_parent);
     if (!parent)
@@ -10,47 +10,75 @@ static bool is_containerized_root(struct task_struct *task) {
 
     struct nsproxy *ns = BPF_CORE_READ(task, nsproxy);
     struct nsproxy *parent_ns = BPF_CORE_READ(parent, nsproxy);
-
     if (!ns || !parent_ns)
         return false;
 
     struct mnt_namespace *mnt_ns = BPF_CORE_READ(ns, mnt_ns);
     struct mnt_namespace *parent_mnt_ns = BPF_CORE_READ(parent_ns, mnt_ns);
-
     if (!mnt_ns || !parent_mnt_ns)
         return false;
 
-    __u64 cur_ns_inum = BPF_CORE_READ(mnt_ns, ns.inum);
-    __u64 parent_ns_inum = BPF_CORE_READ(parent_mnt_ns, ns.inum);
+    struct pid_namespace *pid_ns = BPF_CORE_READ(ns, pid_ns_for_children);
+    struct pid_namespace *parent_pid_ns = BPF_CORE_READ(parent_ns, pid_ns_for_children);
+    if (!pid_ns || !parent_pid_ns)
+        return false;
 
-    return cur_ns_inum != parent_ns_inum;
+    struct uts_namespace *uts_ns = BPF_CORE_READ(ns, uts_ns);
+    struct uts_namespace *parent_uts_ns = BPF_CORE_READ(parent_ns, uts_ns);
+    if (!uts_ns || !parent_uts_ns)
+        return false;
+
+    __u64 cur_mnt_inum = BPF_CORE_READ(mnt_ns, ns.inum);
+    __u64 parent_mnt_inum = BPF_CORE_READ(parent_mnt_ns, ns.inum);
+
+    __u64 cur_pid_inum = BPF_CORE_READ(pid_ns, ns.inum);
+    __u64 parent_pid_inum = BPF_CORE_READ(parent_pid_ns, ns.inum);
+
+    __u64 cur_uts_inum = BPF_CORE_READ(uts_ns, ns.inum);
+    __u64 parent_uts_inum = BPF_CORE_READ(parent_uts_ns, ns.inum);
+
+    // Only mark as container if ALL these differ
+    return (cur_mnt_inum != parent_mnt_inum) &&
+           (cur_pid_inum != parent_pid_inum) &&
+           (cur_uts_inum != parent_uts_inum);
 }
 
-static int symbolicUIDFindClosestPattern(struct UIDVectorAncestors *lineage) {
+static int symbolicUIDFindClosestPattern(__u32 lineage_key) {
     __u16 worstPattern=0;
+    if(!lineage_key) return worstPattern;
+
     struct UIDVector *pattern;
+    struct UIDVectorAncestors *lineage = lineage_memory_read(&lineage_key);
     if(!lineage) return worstPattern;
 
     __u32 _safeCounter_=0;
     __u32 _index_=0;
     
-    for (__u32 i = 0; i < MAX_VECTORS; i++) {
+    for (__u32 i = 0; i < 16; i++) {
         _safeCounter_ = i;
         pattern = bpf_map_lookup_elem(&uid_base_map, &_safeCounter_);
-        if (!pattern)
-            continue;
+        if (!pattern) break;
 
-        for (__u32 j = 0; j <= MAX_ANCESTORS-MAX_VECTOR_CELL; j++) {
-            if(lineage->val[j] == UIDEMPTYCELL) break;
-            if (lineage->val[j] != pattern->val[0]) continue;
-
-            if (lineage->val[j+1] != pattern->val[1]) continue;
-
-            if (lineage->val[j+2] != pattern->val[2]) continue;
-
-            if (lineage->val[j+3] != pattern->val[3]) continue;
-            
-
+        // Check 4-element chunks: [0-3], [4-7], [8-11], [12-15]
+        if ((lineage->val[0] == pattern->val[0] && lineage->val[1] == pattern->val[1] && lineage->val[2] == pattern->val[2] && lineage->val[3] == pattern->val[3])) {
+            if(worstPattern < pattern->severity) {
+                worstPattern = pattern->severity;
+                _index_ = i;
+            }
+        }
+        else if ((lineage->val[4] == pattern->val[0] && lineage->val[5] == pattern->val[1] && lineage->val[6] == pattern->val[2] && lineage->val[7] == pattern->val[3])) {
+            if(worstPattern < pattern->severity) {
+                worstPattern = pattern->severity;
+                _index_ = i;
+            }
+        }
+        else if ((lineage->val[8] == pattern->val[0] && lineage->val[9] == pattern->val[1] && lineage->val[10] == pattern->val[2] && lineage->val[11] == pattern->val[3])) {
+            if(worstPattern < pattern->severity) {
+                worstPattern = pattern->severity;
+                _index_ = i;
+            }
+        }
+        else if ((lineage->val[12] == pattern->val[0] && lineage->val[13] == pattern->val[1] && lineage->val[14] == pattern->val[2] && lineage->val[15] == pattern->val[3])) {
             if(worstPattern < pattern->severity) {
                 worstPattern = pattern->severity;
                 _index_ = i;
@@ -65,10 +93,10 @@ static int symbolicUIDFindClosestPattern(struct UIDVectorAncestors *lineage) {
 
 
 static int lineageUIDAnalizer(struct task_struct * task, struct UniqueKey * ukey){
+    if(!task || !ukey) return BASE;
 
     kuid_t real_uid = BPF_CORE_READ(task, real_cred, uid);
-    struct task_struct *parent = BPF_CORE_READ(task, real_parent);
-    struct task_struct *parent_prv = parent;
+    if(real_uid.val < 0) return BASE;
     
     __u32 lineage_key = generate_tmp_ukey(ukey->pid, ukey->tpid) + 300;
     struct UIDVectorAncestors *lineage = lineage_memory_allocate(&lineage_key, NULL);
@@ -76,8 +104,6 @@ static int lineageUIDAnalizer(struct task_struct * task, struct UniqueKey * ukey
         lineage_memory_delete(&lineage_key);
         return BASE;
     }
-    
-    kuid_t parent_uid ;
 
     int uidHolder= real_uid.val> 0? real_uid.val: -1;
     
@@ -86,7 +112,9 @@ static int lineageUIDAnalizer(struct task_struct * task, struct UniqueKey * ukey
     tmpValue= real_uid.val >0 ? UIDWILDCARD : UIDROOT;
     if (0 < MAX_ANCESTORS) lineage->val[0] = tmpValue;
 
-    #pragma clang loop unroll(disable)
+    struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+    struct task_struct *parent_prv = parent;
+
     for (int i = 1; i < MAX_ANCESTORS && i < 32; i++) {
         // Early termination - preserve logic
         if(!parent){
@@ -136,7 +164,12 @@ static int lineageUIDAnalizer(struct task_struct * task, struct UniqueKey * ukey
         parent = BPF_CORE_READ(parent, real_parent);
     }
 
-    int result = symbolicUIDFindClosestPattern(lineage);
+    for (int i = 0; i < MAX_ANCESTORS; i += 4) {
+        bpf_printk("Lineage[%d-%d]: %d %d %d %d", i, i+3, 
+                   lineage->val[i], lineage->val[i+1], lineage->val[i+2], lineage->val[i+3]);
+    }
+
+    int result = symbolicUIDFindClosestPattern(lineage_key);
     lineage_memory_delete(&lineage_key);
     
     return result;

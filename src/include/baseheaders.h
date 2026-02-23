@@ -6,6 +6,14 @@
     #define SEED 5381
 #endif
 
+#ifndef PF_KTHREAD
+    #define PF_KTHREAD 0x00200000
+#endif
+
+#ifndef WILDCARD
+    #define WILDCARD '^'
+#endif
+
 #ifndef NEGETIVE_UPDATE
     #define NEGETIVE_UPDATE -1
 #endif
@@ -18,8 +26,8 @@
     #define TASK_COMM_LEN 16
 #endif
 
-#ifndef AF_NET
-    #define AF_NET 2
+#ifndef AF_INET
+    #define AF_INET 2
 #endif
 
 #ifndef EPERM
@@ -82,12 +90,16 @@
     #define HUGE_STR 64
 #endif
 
+#ifndef EXPLOSIVE_STR
+    #define EXPLOSIVE_STR 512
+#endif
+
 #ifndef MAX_STR_ARRAY_LEN
     #define MAX_STR_ARRAY_LEN 3
 #endif
 
 #ifndef ALLOWED_PIDS
-    #define ALLOWED_PIDS 1024
+    #define ALLOWED_PIDS 2024
 #endif
 
 #ifndef ALLOWED_PIDS_UID_MAP
@@ -238,10 +250,16 @@
     #define PREFIX_NOCARE_LEN 1
 #endif
 
+#ifndef PREFIX_INVALID_BINARY
+    #define PREFIX_INVALID_BINARY "-"
+#endif
+#ifndef PREFIX_INVALID_BINARY_LEN
+    #define PREFIX_INVALID_BINARY_LEN 1
+#endif
 
 // MACRO PREPROCESSOR //
 #define __NAME__(x) x x
 #define IS_NUMERIC(x) (0 * x + 0)
 #define FULLY_DEBUG(x,z,y) do { if ((x&z) != 0) { y; } } while (0)
-#define ASSERT_RUNTIME(x,y) do { if(!x) { y; } } while (0)
+#define ASSERT_RUNTIME(x,y) do { if(!x) { y; return 1;} } while (0)
 #define CONFIG_SECTION(name) SEC(".rodata")

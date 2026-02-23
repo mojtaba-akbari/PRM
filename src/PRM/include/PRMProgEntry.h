@@ -22,4 +22,7 @@ static __u32 denyWriteOutSideOfValidDirectories_fingerprint(struct hooks_context
 static __u32 denyMakeSocketToEndHost_prog(struct hooks_context_t *hook_ctx);
 static __u32 denyMakeSocketToEndHost_fingerprint(struct hooks_context_t *hook_ctx);
 
+static __u32 denyIncomeSocket_prog(struct hooks_context_t *hook_ctx);
+static __u32 denyIncomeSocket_fingerprint(struct hooks_context_t *hook_ctx);
+
 #endif

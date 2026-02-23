@@ -1,0 +1,111 @@
+without any security plan
+
+[rocker@localhost benchmarks]$ ./simple_bench2.py 
+Testing 1000000 open() syscalls on /tmp/test.dat
+Iteration 0: SUCCESS 148.47 μs
+Iteration 100000: SUCCESS 17.55 μs
+Iteration 200000: SUCCESS 18.19 μs
+Iteration 300000: SUCCESS 17.76 μs
+Iteration 400000: SUCCESS 18.24 μs
+Iteration 500000: SUCCESS 30.52 μs
+Iteration 600000: SUCCESS 22.55 μs
+Iteration 700000: SUCCESS 22.48 μs
+Iteration 800000: SUCCESS 17.42 μs
+Iteration 900000: SUCCESS 17.83 μs
+
+Results:
+Total time: 24.8372 seconds
+Successful opens: 1000000
+Blocked opens: 0
+Average per open(): 24.84 μs
+Syscall throughput: 40262 opens/sec
+[rocker@localhost benchmarks]$ 
+
+
+
+
+
+###############################################
+with PRM when /tmp is open ("add to cache service a right write")   ----> Notice log level is On debuging ! it is too much for our performance and HPC 1M syscall comes to our log like below ! 
+           <...>-3022    [001] ....1.1  4674.432971: bpf_trace_printk: CRED_PREPARE: UID 1000 -> 1000, GID 1000 -> 1000
+           <...>-3022    [001] ....1.1  4674.433192: bpf_trace_printk: BPRM Filename called : ./simple_bench2.py
+
+           <...>-3022    [001] ....1.1  4674.433210: bpf_trace_printk: BPRM File attached : simple_bench2.p
+
+           <...>-3022    [001] ....1.1  4674.433213: bpf_trace_printk: BPRM Interpreter caller : ./simple_bench2.py
+
+           <...>-3022    [001] ....1.1  4674.433215: bpf_trace_printk: Safe BPRM Call
+
+           <...>-3022    [001] ....1.1  4674.433341: bpf_trace_printk: BPRM Filename called : ./simple_bench2.py
+
+           <...>-3022    [001] ....1.1  4674.433345: bpf_trace_printk: BPRM File attached : env
+
+           <...>-3022    [001] ....1.1  4674.433353: bpf_trace_printk: BPRM Interpreter caller : /usr/bin/env
+
+           <...>-3022    [001] ....1.1  4674.433355: bpf_trace_printk: Safe BPRM Call
+
+           <...>-3022    [001] ....1.1  4674.486944: bpf_trace_printk: Path: tmp
+
+
+
+[rocker@localhost benchmarks]$ ./simple_bench2.py 
+Testing 1000000 open() syscalls on /tmp/test.dat
+Iteration 0: SUCCESS 213.79 μs
+Iteration 100000: SUCCESS 15.96 μs
+Iteration 200000: SUCCESS 20.09 μs
+Iteration 300000: SUCCESS 20.42 μs
+Iteration 400000: SUCCESS 31.07 μs
+Iteration 500000: SUCCESS 20.33 μs
+Iteration 600000: SUCCESS 19.69 μs
+Iteration 700000: SUCCESS 30.81 μs
+Iteration 800000: SUCCESS 19.64 μs
+Iteration 900000: SUCCESS 24.32 μs
+
+Results:
+Total time: 23.2587 seconds
+Successful opens: 1000000
+Blocked opens: 0
+Average per open(): 23.26 μs
+Syscall throughput: 42995 opens/sec
+
+
+
+
+###########################################
+
+with PRM when /tmp is closed  ----> Notice log level is On debuging ! it is too much for our performance and HPC 1M syscall comes to our log like below! 
+
+         python3-3151    [003] ....1.1  5061.873207: bpf_trace_printk: Path: tmp
+         python3-3151    [003] ....1.1  5061.873302: bpf_trace_printk: INODE CREATE REJECTED for tmp
+         python3-3151    [003] ....1.1  5061.873329: bpf_trace_printk: PROG: Hook(9)-PID(3151) {python3 -> bash -> sshd} Matched the relation (REJECT) : {python^,*,*, Action=7, RedirectIndex=2, Zone=1, Hook=0}
+
+         python3-3151    [003] ....1.1  5061.873429: bpf_trace_printk: Path: tmp
+         python3-3151    [003] ....1.1  5061.873450: bpf_trace_printk: INODE CREATE REJECTED for tmp
+         python3-3151    [003] ....1.1  5061.873455: bpf_trace_printk: PROG: Hook(9)-PID(3151) {python3 -> bash -> sshd} Matched the relation (REJECT) : {python^,*,*, Action=7, RedirectIndex=2, Zone=1, Hook=0}
+
+         python3-3151    [003] ....1.1  5061.873532: bpf_trace_printk: Path: tmp
+         python3-3151    [003] ....1.1  5061.873555: bpf_trace_printk: INODE CREATE REJECTED for tmp
+         python3-3151    [003] ....1.1  5061.873561: bpf_trace_printk: PROG: Hook(9)-PID(3151) {python3 -> bash -> sshd} Matched the relation (REJECT) : {python^,*,*, Action=7, RedirectIndex=2, Zone=1, Hook=0}
+
+
+[rocker@localhost benchmarks]$ ./simple_bench2.py 
+Testing 1000000 open() syscalls on /tmp/test.dat
+Iteration 0: BLOCKED 97.48 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 100000: BLOCKED 20.08 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 200000: BLOCKED 17.72 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 300000: BLOCKED 25.11 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 400000: BLOCKED 18.35 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 500000: BLOCKED 25.44 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 600000: BLOCKED 17.78 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 700000: BLOCKED 23.72 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 800000: BLOCKED 43.99 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+Iteration 900000: BLOCKED 20.04 μs - [Errno 1] Operation not permitted: '/tmp/test.dat'
+
+Results:
+Total time: 21.7373 seconds
+Successful opens: 0
+Blocked opens: 1000000
+Average per open(): 21.74 μs
+Syscall throughput: 46004 opens/sec
+[rocker@localhost benchmarks]$ 
+#########################################

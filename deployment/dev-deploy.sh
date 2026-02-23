@@ -22,7 +22,7 @@ installation()
     # libpixman-1-dev \
     # zlib1g-dev \
     # flex bison
-
+    echo "Installation.... waiting"
     mkdir -p "$QEMU_DIR" && cd "$QEMU_DIR"
 
     if [ ! -f $OS_file ]; then

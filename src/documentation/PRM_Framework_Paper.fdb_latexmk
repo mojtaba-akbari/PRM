@@ -1,0 +1,15 @@
+# Fdb version 4
+["pdflatex"] 1766145178.1718 "/home/fire/PRM-FRAMEWORK/src/documentation/PRM_Framework_Paper.tex" "PRM_Framework_Paper.pdf" "PRM_Framework_Paper" 1766145178.28636 2
+  "/etc/texmf/web2c/texmf.cnf" 1684068166.21891 475 c0e671620eb5563b2130f56340a5fde8 ""
+  "/home/fire/PRM-FRAMEWORK/src/documentation/PRM_Framework_Paper.tex" 1766145177.35502 64816 40248508925b102b89f3fddbe87fcc63 ""
+  "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1741904018 41538 c016915c1d51223b6dbbfe27341748a8 ""
+  "/usr/share/texmf/web2c/texmf.cnf" 1741904018 41538 c016915c1d51223b6dbbfe27341748a8 ""
+  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1747655854 1928190 cf59936c19315daf970b0bfe7c20edfd ""
+  "IEEEtran.cls" 0 -1 0 ""
+  "PRM_Framework_Paper.aux" 1766145170.16702 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "PRM_Framework_Paper.tex" 1766145177.35502 64816 40248508925b102b89f3fddbe87fcc63 ""
+  (generated)
+  "PRM_Framework_Paper.aux"
+  "PRM_Framework_Paper.log"
+  "PRM_Framework_Paper.pdf"
+  (rewritten before read)

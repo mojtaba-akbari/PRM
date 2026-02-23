@@ -1,0 +1,21 @@
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "syscalls": [
+    {
+      "names": ["openat", "open"],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [
+        {
+          "index": 1,
+          "value": "/tmp/",
+          "op": "SCMP_CMP_MASKED_EQ"
+        }
+      ]
+    },
+    {
+      "names": ["write"],
+      "action": "SCMP_ACT_ERRNO",
+      "comment": "Block writes when file is in /tmp"
+    }
+  ]
+}

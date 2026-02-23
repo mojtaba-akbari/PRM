@@ -6,9 +6,9 @@
 
 
 
-    PRM Table Page Size ---> 5 * Process Relation
-    Number Of PRM Tables ---> 1 - 8 (Ordered) (If you want to check order faster put it by order --- it improves our performance)
-    Process Relation Names ---> 16 * Byte (extra bytes are eliminated)
+    PRM Table Page Size ---> 150 Record
+    Number Of PRM Tables ---> 1
+    Process Relation Names ---> 16 Chars
     
     Notice: Without enough tracing never add roles !!!
     Notice: Dynamic Orders , Take care of order which you put the roles
@@ -48,7 +48,7 @@
     DEBUG, ---> Debug Matched Roles , (low overhead)
    
    Redirect:
-    0 <= X <= 99
+    0 <= X <= 149
 
    Protect-Zone:
     Protected ---> 1
@@ -84,7 +84,9 @@
     TASK_SETPRLIMIT,
     TASK_SETIOPRIO,
     TASK_FIX_SETUID,
-    CRED_PREPARE ---> Index 30
+    CRED_PREPARE, ---> Index 30
+    SOCKET_ACCEPT,
+    KERNEL_MODULE_REQUEST
 
    __DEBUG__:
     NOTHING,
@@ -93,6 +95,25 @@
     EXTERA,
     HIGH,
     VERBOSE
+
+*/
+
+/* Backup some rules
+    #define RELATION_142 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 8, 0, 32
+
+#define RELATION_143 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 7, 0, 6
+
+#define RELATION_144 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 6, 0, 31
+
+#define RELATION_145 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 1, 0, 19
+
+#define RELATION_146 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 2, 0, 9
+
+#define RELATION_147 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 3, 0, 15
+
+#define RELATION_148 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 4, 0, 16
+
+#define RELATION_149 PREFIX_NOCARE, PREFIX_NOCARE, PREFIX_NOCARE, RETURN, 5, 0, 3
 */
 
 #define MAX_NUMBER_OF_RELATION 150
@@ -103,7 +124,11 @@
 
 
 // ********************************************************************************//
-
+// MPI applications first , multi node must work
+// single node must work ---> external connection, hook 3 , no admins no root no users, one user-account
+// acc slurm profile restrication
+// file access any operation 
+// ********************************************************************************//
 // KILL SIG Prog Zone //
 #define RELATION_0 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,30 ,0 ,19 // KILL SIG
 

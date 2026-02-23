@@ -6,6 +6,8 @@
         "prmcacheservice.h": "c",
         "prmprogdispatcher.h": "c",
         "prmverifier.h": "c",
-        "prmfilters.h": "c"
+        "prmfilters.h": "c",
+        "prmprogstructs.h": "c",
+        "prmprog.h": "c"
     }
 }

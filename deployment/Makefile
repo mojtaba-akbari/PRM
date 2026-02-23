@@ -9,7 +9,7 @@ ECC = ./ecc
 
 # Rule to compile the eBPF program
 all:
-	$(ECC) $(SRC) -o $(TARGET)
+	$(ECC) --additional-cflags="-w" $(SRC) -o $(TARGET)
 
 # Clean up build artifacts
 clean:

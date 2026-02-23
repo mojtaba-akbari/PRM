@@ -74,7 +74,10 @@ enum PRM_HOOK_ENUM{
     TASK_SETPRLIMIT,
     TASK_SETIOPRIO,
     TASK_FIX_SETUID,
-    CRED_PREPARE
+    CRED_PREPARE,
+    SOCKET_ACCEPT,
+    KERNEL_MODULE_REQUEST,
+    CAPABLE
 };
 
 enum PRM_STATE_ENUM {
@@ -89,6 +92,20 @@ enum PRM_STATE_ENUM {
 struct SelfPID {
     __u32 pid; 
     __u64 magic;
+};
+
+struct taskUKey{
+    __u64 tgid;
+    char comm[LARGE_STR];
+    __u64 startTime;
+};
+
+struct execPath{
+    __s8 startIndex; // Improves performance 
+    bool isContainerTask;
+    bool isValidDirectory;
+    char exec[MAX_DIR_ITR][MAX_STR]; // This array will be filled out from end ! make sure you point out the first index with StartIndex! Performance is so important! Mojjjak
+    //char fullExecPath[MAX_DIR_ITR*MAX_STR]; // For fast access , improves performance , fix me in next iteration , i have no time for fixing this now !
 };
 
 struct UniqueKey {
@@ -141,6 +158,35 @@ struct args_task_kill_t{
     const struct cred *cred;
 };
 
+struct args_socket_accept_t{
+    struct socket *sock;
+    struct socket *newsock;
+};
+
+struct args_kernel_module_request_t{
+    char *kmod_name;
+};
+
+struct args_cred_prepare_t{
+    struct cred *new;
+    struct cred *old;
+    int flags;
+};
+
+struct args_capable_t{
+    const struct cred *cred; 
+    struct user_namespace *ns; 
+    int cap;
+    unsigned int opts;
+};
+
+struct args_task_fix_set_t{
+    struct task_struct *task;
+    const struct cred *old;
+    const struct cred *new;
+    unsigned int flags;
+};
+
 union lsm_args_u {
     struct args_file_open_t file_open;
     struct args_inode_create_t inode_create;
@@ -149,10 +195,24 @@ union lsm_args_u {
     struct args_socket_connect_t socket_connect;
     struct args_bprm_check_security_t bprm_check_security;
     struct args_file_mprotect_t file_mprotect;
+    struct args_socket_accept_t socket_accept;
+    struct args_kernel_module_request_t kernel_module_request;
+    struct args_cred_prepare_t cred_prepare;
+    struct args_capable_t capable;
+    struct args_task_fix_set_t task_fix_set;
 };
 
 struct hooks_context_t{
+    struct task_struct *task;
+    struct task_struct *task_parent;
+    struct task_struct *task_grandparent;
+
+    struct taskUKey taskUKey;
+    struct taskUKey taskUKeyParent;
+    struct taskUKey taskUKeyGrandParent;
+    
     struct UniqueKey key;
+
     union lsm_args_u args;
 };
 
@@ -165,8 +225,11 @@ enum PROCESS_RELATION_ACTION_ENUM{
     ACCEPT,
     REJECT,
     REDIRECT,
+    PATTERN,
     DEBUG,
-    RETURN
+    BYPASS,
+    RETURN,
+    END
 };
 
 struct process_relation {
@@ -175,7 +238,7 @@ struct process_relation {
     char grandparent[MAX_RELATION_PROCESSNAME];
     enum PROCESS_RELATION_ACTION_ENUM action;
     __u32 redirectIndex;
-    bool protectZone:1;
+    int protectZone;
     enum PRM_HOOK_ENUM hookType;
 };
 
@@ -184,7 +247,290 @@ struct process_entry{
     enum PRM_HOOK_ENUM hook;
 };
 
-const struct process_relation _prelation_empty_ SEC(".rodata") = {{""},{""},{""},NONE_ACTION,0,0,NONE_CELL};
+struct empty_buffer{
+    char _buff_[HUGE_STR];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_NUMBER_OF_RELATION);
+    __type(key, u32);
+    __type(value, struct process_relation);
+} prm_map SEC(".maps");
+
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, PRM_STATE);
+    __type(key, __u32);
+    __type(value, struct prm_state);
+} prm_state_map SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, SELF_PIDS);
+    __type(key, u32);
+    __type(value, struct {__u32 pid;__u64 magic;});
+    __uint(map_flags, BPF_F_LOCK);
+} self_pids SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, ALLOWED_PIDS);  
+    __type(key, struct UniqueKey);
+    __type(value, struct cache_record); 
+} process_list SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 748);
+    __type(key, struct taskUKey);
+    __type(value, struct execPath); 
+} execPath_list SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 748);
+    __type(key, __u32);
+    __type(value, struct empty_buffer);
+} tmp_buffer_ SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 32);
+    __type(key, __u32);
+    __type(value, char[EXPLOSIVE_STR]);
+} tmp_buffer_512B SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 256);
+    __type(key, __u32);
+    __type(value, struct hooks_context_t);
+} _ctx_holder_ SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 256);
+    __type(key, __u32);
+    __type(value, struct cache_record);
+} _cache_record_holder_ SEC(".maps");
+
+
+
+// Lineage //
+#define MAX_VECTOR_CELL 4
+#define MAX_VECTORS 19
+
+
+enum UID_VECTOR_ELEM{
+    UIDROOT = 0,
+    UIDEMPTYCELL = 1,
+    UIDWILDCARD= 2,
+    UIDMISMATCH = 3
+};
+
+enum UID_VECTOR_SEVERITY {
+    EASY = 0,             // Not checked or not applicable
+    BASE = 1,               // Normal base behavior
+    BENIGN = 2,             // Expected, non-privileged action
+    LOW_RISK = 3,           // Mildly uncommon, likely okay
+    SUSPICIOUS = 4,         // Unusual pattern, worth watching
+    ANOMALOUS = 5,          // Unexpected, but unclear intent
+    ELEVATED = 6,           // Privilege escalation likely
+    ESCALATED = 7,          // Confirmed setuid/sudo jump
+    DANGEROUS = 8,          // Likely malicious behavior
+    CRITICAL = 9,           // High-confidence exploit
+    ROOT_COMPROMISED = 10   // Confirmed root takeover path
+};
+
+struct UIDVector {
+    __u8 severity;
+    __u8 val[MAX_VECTOR_CELL];
+};
+
+struct BaseDB {
+    struct UIDVector entries[MAX_VECTORS];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_VECTORS);
+    __type(key, __u32);
+    __type(value, struct UIDVector);
+} uid_base_map SEC(".maps");
+
+
+struct UIDVectorAncestors {
+    __u8 val[MAX_ANCESTORS];
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 64);
+    __type(key, __u32);
+    __type(value, struct UIDVectorAncestors);
+} tmp_lineage SEC(".maps");
+
+
+// Functions definations //
+const struct cache_record _emptycacherecord_ SEC(".rodata") = {0};
+
+const struct empty_buffer _emptybuffer_ SEC(".rodata") = {0};
+
+const struct hooks_context_t _emptyctx_ SEC(".rodata") = {0};
+
+const struct UIDVectorAncestors _emptylineage_ SEC(".rodata") = {0};
+
+const struct execPath _emptyexecpath_ SEC(".rodata") = {.startIndex=-1,.isValidDirectory=0,.exec={0}};
+
+static struct empty_buffer * char_memory_allocate(__u32 * ukey, char * data);
+
+static struct empty_buffer * char_memory_read(__u32 * ukey);
+
+static __u32 char_memory_delete(__u32 * ukey);
+
+static struct empty_buffer * char_memory_big_allocate(__u32 * ukey, char * data);
+
+static struct empty_buffer * char_memory_big_read(__u32 * ukey);
+
+static __u32 char_memory_big_delete(__u32 * ukey);
+
+static struct hooks_context_t * ctx_memory_allocate(__u32 * ukey);
+
+static struct execPath * execPath_memory_allocate(struct taskUKey * uk);
+
+static struct execPath * execPath_memory_read(struct taskUKey * uk);
+
+static __u32 execPath_memory_delete(struct taskUKey * uk);
+
+static struct UIDVectorAncestors * lineage_memory_allocate(__u32 * ukey, struct UIDVectorAncestors * data);
+
+static struct UIDVectorAncestors * lineage_memory_read(__u32 *ukey);
+
+static __u32 lineage_memory_delete(__u32 *ukey);
+
+static struct cache_record * cache_record_memory_allocate(__u32 * ukey, struct cache_record * data);
+
+static struct cache_record * cache_record_memory_read(__u32 *ukey);
+
+static __u32 cache_record_memory_delete(__u32 *ukey);
+
+static int init_relation_map();
+
+static int init_uid_base_map();
+
+static int Load_PRM();
+
+static __u32 jenkinsHash(__u32 a, __u32 b, __u32 c);
+
+
+
+// Pretrained Vectors //
+const struct BaseDB base SEC(".rodata")= { .entries = {
+        // Case: Normal root actions like daemon
+        {.severity=EASY,
+        .val={0, 0, 0, 0}
+        },
+
+        // Case: Normal root actions , root used another user ! <--- It depends on situation can be esclated
+        // current space is root : sudo -u trustuser kill -9 PID , sudo -u trustuser bash -c "sudo kill -9 PID" ....
+        {.severity=BASE,
+        .val={0, 2, 0, 0}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 0, 0, 2}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 0, 2, 2}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 2, 2, 2}
+        },
+
+        // Case: consecutive actions as root after UID
+        {.severity=ESCALATED,
+        .val={0, 2, 0, 2}
+        },
+
+        // Case: UID Normal actions
+        {.severity=LOW_RISK,
+        .val={2, 2, 2, 2}
+        },
+
+        // Case: UID mismatch + root 
+        {.severity=CRITICAL,
+        .val={0, 2, 2, 3}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 2, 3, 2}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 3, 2, 2}
+        },
+        
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 0, 3, 2}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 0, 3, 3}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 3, 3, 2}
+        },
+
+        // Case: UID mismatch + root
+        {.severity=CRITICAL,
+        .val={0, 3, 3, 3}
+        },
+
+        // Case: Mismatch at the end (post-spawn)
+        {.severity=ANOMALOUS,
+        .val={2, 2, 2, 3}
+        },
+
+        // Case: Mismatch + none root
+        {.severity=ANOMALOUS,
+        .val={2, 2, 3, 2}
+        },
+
+        // Case: Normal user → double root
+        {.severity=ANOMALOUS,
+        .val={2, 3, 2, 2}
+        },
+
+        // Case: Alternating mismatch & root
+        {.severity=ANOMALOUS,
+        .val={3, 2, 2, 2}
+        },
+
+        // Case: Syscalls come from Normal User / sometimes the last 0 is daemon
+        {.severity=LOW_RISK,
+        .val={2, 2, 2, 0}
+        }
+    }
+};
+
+
+
+
+// Relation Table //
+const struct process_relation _prelation_empty_ SEC(".rodata") = {{0},{0},{0},NONE_ACTION,0,0,NONE_CELL};
 
 const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata") = {
     {RELATION_0},
@@ -336,250 +682,156 @@ const struct process_relation relation_data[MAX_NUMBER_OF_RELATION] SEC(".rodata
     {RELATION_146},
     {RELATION_147},
     {RELATION_148},
-    {RELATION_149}
+    {RELATION_149},
+    {RELATION_150},
+    {RELATION_151},
+    {RELATION_152},
+    {RELATION_153},
+    {RELATION_154},
+    {RELATION_155},
+    {RELATION_156},
+    {RELATION_157},
+    {RELATION_158},
+    {RELATION_159},
+    {RELATION_160},
+    {RELATION_161},
+    {RELATION_162},
+    {RELATION_163},
+    {RELATION_164},
+    {RELATION_165},
+    {RELATION_166},
+    {RELATION_167},
+    {RELATION_168},
+    {RELATION_169},
+    {RELATION_170},
+    {RELATION_171},
+    {RELATION_172},
+    {RELATION_173},
+    {RELATION_174},
+    {RELATION_175},
+    {RELATION_176},
+    {RELATION_177},
+    {RELATION_178},
+    {RELATION_179},
+    {RELATION_180},
+    {RELATION_181},
+    {RELATION_182},
+    {RELATION_183},
+    {RELATION_184},
+    {RELATION_185},
+    {RELATION_186},
+    {RELATION_187},
+    {RELATION_188},
+    {RELATION_189},
+    {RELATION_190},
+    {RELATION_191},
+    {RELATION_192},
+    {RELATION_193},
+    {RELATION_194},
+    {RELATION_195},
+    {RELATION_196},
+    {RELATION_197},
+    {RELATION_198},
+    {RELATION_199},
+    {RELATION_200},
+    {RELATION_201},
+    {RELATION_202},
+    {RELATION_203},
+    {RELATION_204},
+    {RELATION_205},
+    {RELATION_206},
+    {RELATION_207},
+    {RELATION_208},
+    {RELATION_209},
+    {RELATION_210},
+    {RELATION_211},
+    {RELATION_212},
+    {RELATION_213},
+    {RELATION_214},
+    {RELATION_215},
+    {RELATION_216},
+    {RELATION_217},
+    {RELATION_218},
+    {RELATION_219},
+    {RELATION_220},
+    {RELATION_221},
+    {RELATION_222},
+    {RELATION_223},
+    {RELATION_224},
+    {RELATION_225},
+    {RELATION_226},
+    {RELATION_227},
+    {RELATION_228},
+    {RELATION_229},
+    {RELATION_230},
+    {RELATION_231},
+    {RELATION_232},
+    {RELATION_233},
+    {RELATION_234},
+    {RELATION_235},
+    {RELATION_236},
+    {RELATION_237},
+    {RELATION_238},
+    {RELATION_239},
+    {RELATION_240},
+    {RELATION_241},
+    {RELATION_242},
+    {RELATION_243},
+    {RELATION_244},
+    {RELATION_245},
+    {RELATION_246},
+    {RELATION_247},
+    {RELATION_248},
+    {RELATION_249},
+    {RELATION_250},
+    {RELATION_251},
+    {RELATION_252},
+    {RELATION_253},
+    {RELATION_254},
+    {RELATION_255},
+    {RELATION_256},
+    {RELATION_257},
+    {RELATION_258},
+    {RELATION_259},
+    {RELATION_260},
+    {RELATION_261},
+    {RELATION_262},
+    {RELATION_263},
+    {RELATION_264},
+    {RELATION_265},
+    {RELATION_266},
+    {RELATION_267},
+    {RELATION_268},
+    {RELATION_269},
+    {RELATION_270},
+    {RELATION_271},
+    {RELATION_272},
+    {RELATION_273},
+    {RELATION_274},
+    {RELATION_275},
+    {RELATION_276},
+    {RELATION_277},
+    {RELATION_278},
+    {RELATION_279},
+    {RELATION_280},
+    {RELATION_281},
+    {RELATION_282},
+    {RELATION_283},
+    {RELATION_284},
+    {RELATION_285},
+    {RELATION_286},
+    {RELATION_287},
+    {RELATION_288},
+    {RELATION_289},
+    {RELATION_290},
+    {RELATION_291},
+    {RELATION_292},
+    {RELATION_293},
+    {RELATION_294},
+    {RELATION_295},
+    {RELATION_296},
+    {RELATION_297},
+    {RELATION_298},
+    {RELATION_299}
 };
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, MAX_NUMBER_OF_RELATION);
-    __type(key, u32);
-    __type(value, struct process_relation);
-} prm_map SEC(".maps");
-
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, PRM_STATE);
-    __type(key, __u32);
-    __type(value, struct prm_state);
-} prm_state_map SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, SELF_PIDS);
-    __type(key, u32);
-    __type(value, struct {__u32 pid;__u64 magic;});
-    __uint(map_flags, BPF_F_LOCK);
-} self_pids SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, ALLOWED_PIDS);  
-    __type(key, struct UniqueKey);
-    __type(value, struct cache_record); 
-} process_list SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 120);
-    __type(key, __u32);
-    __type(value, char[HUGE_STR]);
-} tmp_buffer_ SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 64);
-    __type(key, __u32);
-    __type(value, struct hooks_context_t);
-} _ctx_holder_ SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 64);
-    __type(key, __u32);
-    __type(value, struct cache_record);
-} _cache_record_holder_ SEC(".maps");
-
-struct empty_buffer{
-    char _buff_[HUGE_STR];
-};
-
-// Lineage //
-#define MAX_VECTOR_CELL 4
-#define MAX_VECTORS 19
-
-
-enum UID_VECTOR_ELEM{
-    UIDROOT = 0,
-    UIDEMPTYCELL = 1,
-    UIDWILDCARD= 2,
-    UIDMISMATCH = 3
-};
-
-enum UID_VECTOR_SEVERITY {
-    EASY = 0,             // Not checked or not applicable
-    BASE = 1,               // Normal base behavior
-    BENIGN = 2,             // Expected, non-privileged action
-    LOW_RISK = 3,           // Mildly uncommon, likely okay
-    SUSPICIOUS = 4,         // Unusual pattern, worth watching
-    ANOMALOUS = 5,          // Unexpected, but unclear intent
-    ELEVATED = 6,           // Privilege escalation likely
-    ESCALATED = 7,          // Confirmed setuid/sudo jump
-    DANGEROUS = 8,          // Likely malicious behavior
-    CRITICAL = 9,           // High-confidence exploit
-    ROOT_COMPROMISED = 10   // Confirmed root takeover path
-};
-
-struct UIDVector {
-    __u8 severity;
-    __u8 val[MAX_VECTOR_CELL];
-};
-
-struct BaseDB {
-    struct UIDVector entries[MAX_VECTORS];
-};
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, MAX_VECTORS);
-    __type(key, __u32);
-    __type(value, struct UIDVector);
-} uid_base_map SEC(".maps");
-
-
-struct UIDVectorAncestors {
-    __u8 val[MAX_ANCESTORS];
-};
-
-struct {
-    __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __uint(max_entries, 64);
-    __type(key, __u32);
-    __type(value, struct UIDVectorAncestors);
-} tmp_lineage SEC(".maps");
-
-// Pretrained Vectors //
-const struct BaseDB base SEC(".rodata")= { .entries = {
-        // Case: Normal root actions like daemon
-        {.severity=EASY,
-        .val={0, 0, 0, 0}
-        },
-
-        // Case: Normal root actions , root used another user ! <--- It depends on situation can be esclated
-        // current space is root : sudo -u trustuser kill -9 PID , sudo -u trustuser bash -c "sudo kill -9 PID" ....
-        {.severity=BASE,
-        .val={0, 2, 0, 0}
-        },
-
-        // Case: consecutive actions as root after UID
-        {.severity=ESCALATED,
-        .val={0, 0, 0, 2}
-        },
-
-        // Case: consecutive actions as root after UID
-        {.severity=ESCALATED,
-        .val={0, 0, 2, 2}
-        },
-
-        // Case: consecutive actions as root after UID
-        {.severity=ESCALATED,
-        .val={0, 2, 2, 2}
-        },
-
-        // Case: consecutive actions as root after UID
-        {.severity=ESCALATED,
-        .val={0, 2, 0, 2}
-        },
-
-        // Case: UID Normal actions
-        {.severity=LOW_RISK,
-        .val={2, 2, 2, 2}
-        },
-
-        // Case: UID mismatch + root 
-        {.severity=CRITICAL,
-        .val={0, 2, 2, 3}
-        },
-
-        // Case: UID mismatch + root
-        {.severity=CRITICAL,
-        .val={0, 2, 3, 2}
-        },
-
-        // Case: UID mismatch + root
-        {.severity=CRITICAL,
-        .val={0, 3, 2, 2}
-        },
-        
-        // Case: UID mismatch + root
-        {.severity=CRITICAL,
-        .val={0, 0, 3, 2}
-        },
-
-        // Case: UID mismatch + root
-        {.severity=CRITICAL,
-        .val={0, 0, 3, 3}
-        },
-
-        // Case: UID mismatch + root
-        {.severity=CRITICAL,
-        .val={0, 3, 3, 2}
-        },
-
-        // Case: UID mismatch + root
-        {.severity=CRITICAL,
-        .val={0, 3, 3, 3}
-        },
-
-        // Case: Mismatch at the end (post-spawn)
-        {.severity=ANOMALOUS,
-        .val={2, 2, 2, 3}
-        },
-
-        // Case: Mismatch + none root
-        {.severity=ANOMALOUS,
-        .val={2, 2, 3, 2}
-        },
-
-        // Case: Normal user → double root
-        {.severity=ANOMALOUS,
-        .val={2, 3, 2, 2}
-        },
-
-        // Case: Alternating mismatch & root
-        {.severity=ANOMALOUS,
-        .val={3, 2, 2, 2}
-        },
-
-        // Case: Syscalls come from Normal User / sometimes the last 0 is daemon
-        {.severity=LOW_RISK,
-        .val={2, 2, 2, 0}
-        }
-    }
-};
-
-const struct cache_record _emptycacherecord_ SEC(".rodata") = {0};
-
-const struct empty_buffer _emptybuffer_ SEC(".rodata") = {{0}};
-
-const struct hooks_context_t _emptyctx_ SEC(".rodata") = {0};
-
-const struct UIDVectorAncestors _emptylineage_ SEC(".rodata") = {0};
-
-static char * char_memory_allocate(__u32 * ukey, char * data);
-
-static char * char_memory_read(__u32 * ukey);
-
-static __u32 char_memory_delete(__u32 * ukey);
-
-static struct hooks_context_t * ctx_memory_allocate(__u32 * ukey);
-
-static struct UIDVectorAncestors * lineage_memory_allocate(__u32 * ukey, struct UIDVectorAncestors * data);
-
-static struct UIDVectorAncestors * lineage_memory_read(__u32 *ukey);
-
-static __u32 lineage_memory_delete(__u32 *ukey);
-
-static struct cache_record * cache_record_memory_allocate(__u32 * ukey, struct cache_record * data);
-
-static struct cache_record * cache_record_memory_read(__u32 *ukey);
-
-static __u32 cache_record_memory_delete(__u32 *ukey);
-
-static void init_relation_map();
-
-static void Load_PRM();
-
-static __u32 jenkinsHash(__u32 a, __u32 b, __u32 c);
-
 #endif

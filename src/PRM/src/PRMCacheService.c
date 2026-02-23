@@ -3,7 +3,7 @@
 static int addLRUCache(struct UniqueKey * key){
     if(!key) RET_REJECT
 
-    if(key->crecord.is_valid_entries == 1){
+    if(key->crecord.direct_relation != -1){
         __u32 crecord_key = generate_tmp_ukey(key->pid, key->tpid) + 400;
         struct cache_record *crecord = cache_record_memory_allocate(&crecord_key, NULL);
         if (!crecord) {
@@ -13,7 +13,7 @@ static int addLRUCache(struct UniqueKey * key){
         }
         
 
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Adding to cache , Comes from Prog: Hook(%d)-PID(%d) {%d Prog}} \n",key->hook, key->pid, key->crecord.direct_relation));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Adding to cache , Comes from Prog: Hook(%d)-PID(%d) {%d Direct Relation}} \n",key->hook, key->pid, key->crecord.direct_relation));
 
         bpf_probe_read(crecord, sizeof(*crecord), &key->crecord);
         CLEAN_CACHE_RECORD(key)
@@ -22,7 +22,8 @@ static int addLRUCache(struct UniqueKey * key){
         cache_record_memory_delete(&crecord_key);
     }
     else{
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Adding to cache , Comes from None-Prog: Hook(%d)-PID(%d) {%d Prog}} \n",key->hook, key->pid, key->crecord.direct_relation));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Adding to cache , Comes from None-Prog: Hook(%d)-PID(%d) {NON Direct Relation}} \n",key->hook, key->pid));
+        CLEAN_CACHE_RECORD(key)
         bpf_map_update_elem(&process_list, key, &key->crecord, BPF_ANY);
     }
 
