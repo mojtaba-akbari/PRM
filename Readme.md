@@ -436,6 +436,15 @@ last reference (pin or fd) is removed.
 
 ---
 
+## Authors
+
+Mojtaba Akbari (Mojjjak)  
+GWDG -- Georg-August-Universitaet Goettingen  
+mojtaba.akbari@gwdg.de  
+mojtaba.akbari.sec@gmail.com
+
+---
+
 ## License
 
 GPL (required for eBPF programs that use GPL-only BPF helpers).
