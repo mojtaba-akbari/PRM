@@ -159,7 +159,7 @@
 
 #define RELATION_15 "slurmstepd", "slurmstepd", "systemd", ACCEPT, 0,0,0 // Slurm Job Manager , any kind of spawn from slurmstepd | TEST-PASSED
 
-#define RELATION_16 EMPTY
+#define RELATION_16 "sshd", PREFIX_NOCARE, PREFIX_NOCARE, ACCEPT, 0,0,0 // SSHD internal deamon | TEST-PASSED
 
 #define RELATION_17 EMPTY
 
@@ -201,7 +201,7 @@
 
 #define RELATION_36 "ptrace", PREFIX_NOCARE, PREFIX_NOCARE, REJECT, 0,0,0 // | TEST-PASSED
 
-#define RELATION_37 "nc", PREFIX_NOCARE, PREFIX_NOCARE, REJECT, 0,0,0 // | TEST-PASSED
+#define RELATION_37 "netcat", PREFIX_NOCARE, PREFIX_NOCARE, REJECT, 0,0,0 // | TEST-PASSED , i changed it to netcat to test server with nc :) redo it later
 
 #define RELATION_38 "nmap", PREFIX_NOCARE, PREFIX_NOCARE, REJECT, 0,0,0 // | TEST-PASSED
 
@@ -213,8 +213,8 @@
 
 #define RELATION_42 "fish", PREFIX_NOCARE, PREFIX_NOCARE, REJECT, 0,0,0 // | TEST-PASSED
 
-// KILL-SIG Prog Zone //
-#define RELATION_43 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,290 ,0 ,19 // KILL SIG -- Prog 1  -- Mojjjak , Use direct redirect , do not use Pattern for this Hook , Pattern-1 is not convient for this Hook.
+// KILL-SIG Redirect //
+#define RELATION_43 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,290 ,0 ,19 // KILL SIG -- 
 
 // INODE-CREATE Prog Zone //
 #define RELATION_44 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,62 ,2 ,9 // INODE CREATE -- Prog 2 -- Pattern-1
@@ -260,84 +260,68 @@
 
 #define RELATION_60 EMPTY
 
-// <<<>>> End Of Static Table, After this Rule all the rest count as Zone //
+// <<<>>> End Of Static Table, After this Rule all the rests are counted as Zone //
 #define RELATION_61 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,END ,0 ,0 ,0 // Mojjjak --- Everything reaches the end relation, will be accepted !
 
 
-// Pattern - 1 //
+// Pattern - 1 - HPC Comprehensive //
 // Protected Zone //
-// Mojjjak , This pattern can cover all HPC cases! //
-#define RELATION_62 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,BYPASS ,0 ,1 ,0
+#define RELATION_62 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,DEBUG ,0 ,1 ,0
 
-#define RELATION_63 PREFIX_NOCARE, "slurmstepd" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// HPC Infrastructure
+#define RELATION_63 "|slurmstepd", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_64 "|slurmd", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_65 "|containerd-shim", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_66 "|singularity", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_67 "|apptainer", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_68 "|runc", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_69 "|starter-suid", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_64 PREFIX_NOCARE, "slurmd" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// Shells (Symmetric)
+#define RELATION_70 "|bash", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_71 "|sh", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_72 "|dash", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_73 "|zsh", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_74 "|csh", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_75 "|tcsh", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_65 PREFIX_NOCARE, "containerd-shim" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// Interpreters (Symmetric)
+#define RELATION_76 "|python", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_77 "|python2", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_78 "|python3", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_66 PREFIX_NOCARE, "singularity" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// HPC Utilities (Symmetric)
+#define RELATION_79 "|mpirun", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_80 "|mpiexec", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_81 "|srun", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_82 "|sbatch", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_67 PREFIX_NOCARE, "apptainer" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// System Utilities (Symmetric)
+#define RELATION_83 "|env", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_84 "|xargs", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_85 "|find", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_86 "|make", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_87 "|sudo", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_88 "|su", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_68 PREFIX_NOCARE, "runc" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// Editors (Symmetric)
+#define RELATION_89 "|vim", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_90 "|vi", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_91 "|emacs", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_92 "|nano", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_69 PREFIX_NOCARE, "starter-suid" ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// SSH/Remote (Symmetric)
+#define RELATION_93 "|sshd", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_70 "python^", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// Cron (Symmetric)
+#define RELATION_94 "|cron", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+#define RELATION_95 "|crond", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
 
-#define RELATION_71 "bash", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
+// Invalid Binary Catch
+#define RELATION_96 PREFIX_INVALID_BINARY, PREFIX_INVALID_BINARY, PREFIX_INVALID_BINARY, RETURN, 0, 1, 0
 
-#define RELATION_72 "sh", PREFIX_NOCARE ,PREFIX_NOCARE ,RETURN ,0 ,1 ,0
-
-#define RELATION_73 PREFIX_INVALID_BINARY, PREFIX_INVALID_BINARY, PREFIX_INVALID_BINARY, RETURN, 0, 1, 0
-
-#define RELATION_74 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,74 ,1 ,0 // End of Pattern
-
-#define RELATION_75 EMPTY
-
-#define RELATION_76 EMPTY
-
-#define RELATION_77 EMPTY
-
-#define RELATION_78 EMPTY
-
-#define RELATION_79 EMPTY
-
-#define RELATION_80 EMPTY
-
-#define RELATION_81 EMPTY
-
-#define RELATION_82 EMPTY
-
-#define RELATION_83 EMPTY
-
-#define RELATION_84 EMPTY
-
-#define RELATION_85 EMPTY
-
-#define RELATION_86 EMPTY
-
-#define RELATION_87 EMPTY
-
-#define RELATION_88 EMPTY
-
-#define RELATION_89 EMPTY
-
-#define RELATION_90 EMPTY
-
-#define RELATION_91 EMPTY
-
-#define RELATION_92 EMPTY
-
-#define RELATION_93 EMPTY
-
-#define RELATION_94 EMPTY
-
-#define RELATION_95 EMPTY
-
-#define RELATION_96 EMPTY
-
-#define RELATION_97 EMPTY
+// End of Pattern
+#define RELATION_97 PREFIX_NOCARE, PREFIX_NOCARE ,PREFIX_NOCARE ,REDIRECT ,97 ,1 ,0
 
 #define RELATION_98 EMPTY
 

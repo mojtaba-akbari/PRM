@@ -240,6 +240,12 @@ struct process_relation {
     __u32 redirectIndex;
     int protectZone;
     enum PRM_HOOK_ENUM hookType;
+    // Hash fields for fast comparison (added at end for compatibility)
+    __u32 process_hash;
+    __u32 parent_hash;
+    __u32 grandparent_hash;
+    bool is_symmetric : 1; // Symmetric rule flag
+    __u32 symmetric_hash; // Single hash for symmetric matching
 };
 
 struct process_entry{
@@ -280,6 +286,14 @@ struct {
     __type(key, struct UniqueKey);
     __type(value, struct cache_record); 
 } process_list SEC(".maps");
+
+// Blacklist for instant rejection - stores cache_record with hash fingerprints
+struct {
+    __uint(type, BPF_MAP_TYPE_LRU_HASH);
+    __uint(max_entries, 2048);
+    __type(key, struct UniqueKey);  // {pid, tpid, hook}
+    __type(value, struct cache_record); // hash fingerprints like whitelist
+} blacklist SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);

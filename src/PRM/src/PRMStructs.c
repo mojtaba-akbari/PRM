@@ -33,6 +33,7 @@ static int init_relation_map() {
     __u32 _safeCounter_=0;
 
     struct process_relation *processTmpx;
+    struct process_relation processTmp_with_hash;
 
     for (int i = 0; i < MAX_NUMBER_OF_RELATION; i++) {
         _safeCounter_=i;
@@ -55,10 +56,49 @@ static int init_relation_map() {
             ASSERT_RUNTIME((processTmpx->protectZone >= 0 || processTmpx->protectZone <= MAX_NUMBER_OF_RELATION-1) , bpf_printk("Role#%d wrong protect zone flag index",_safeCounter_)); // Fix me wrong boundry
         }
         
-        bpf_printk("Role Number #%d {(process=%s),(parent=%s),(grand=%s),(hookType=%d),(action=%d),(redirectIndex=%d),(protectZone=%d)} Loaded Up",_safeCounter_,processTmpx->process,
-                        processTmpx->parent,processTmpx->grandparent,processTmpx->hookType,processTmpx->action,processTmpx->redirectIndex,processTmpx->protectZone);
+        // Copy to temp struct and compute hashes
+        __builtin_memcpy(&processTmp_with_hash, processTmpx, sizeof(struct process_relation));
+        
+        // Check if symmetric: process starts with '|'
+        if(processTmp_with_hash.process[0] == '|' && 
+           processTmp_with_hash.parent[0] == PREFIX_NOCARE[0] && 
+           processTmp_with_hash.grandparent[0] == PREFIX_NOCARE[0]) {
+            processTmp_with_hash.is_symmetric = 1;
+            processTmp_with_hash.symmetric_hash = str_to_u32(&processTmp_with_hash.process[1]);
+            processTmp_with_hash.process_hash = 0;
+            processTmp_with_hash.parent_hash = 0;
+            processTmp_with_hash.grandparent_hash = 0;
+            bpf_printk("Role#%d SYMMETRIC: %s", _safeCounter_, &processTmp_with_hash.process[1]);
+        } else {
+            processTmp_with_hash.is_symmetric = 0;
+            processTmp_with_hash.symmetric_hash = 0;
+            
+            if(processTmp_with_hash.process[0] != PREFIX_NOCARE[0] && 
+               processTmp_with_hash.process[0] != PREFIX_INVALID_BINARY[0]) {
+                processTmp_with_hash.process_hash = str_to_u32(processTmp_with_hash.process);
+            } else {
+                processTmp_with_hash.process_hash = 0;
+            }
+            
+            if(processTmp_with_hash.parent[0] != PREFIX_NOCARE[0] && 
+               processTmp_with_hash.parent[0] != PREFIX_INVALID_BINARY[0]) {
+                processTmp_with_hash.parent_hash = str_to_u32(processTmp_with_hash.parent);
+            } else {
+                processTmp_with_hash.parent_hash = 0;
+            }
+            
+            if(processTmp_with_hash.grandparent[0] != PREFIX_NOCARE[0] && 
+               processTmp_with_hash.grandparent[0] != PREFIX_INVALID_BINARY[0]) {
+                processTmp_with_hash.grandparent_hash = str_to_u32(processTmp_with_hash.grandparent);
+            } else {
+                processTmp_with_hash.grandparent_hash = 0;
+            }
+        }
+        
+        bpf_printk("Role Number #%d {(process=%s),(parent=%s),(grand=%s),(hookType=%d),(action=%d),(redirectIndex=%d),(protectZone=%d)} Loaded Up",_safeCounter_,processTmp_with_hash.process,
+                        processTmp_with_hash.parent,processTmp_with_hash.grandparent,processTmp_with_hash.hookType,processTmp_with_hash.action,processTmp_with_hash.redirectIndex,processTmp_with_hash.protectZone);
 
-        bpf_map_update_elem(&prm_map, &_safeCounter_, processTmpx, BPF_ANY);
+        bpf_map_update_elem(&prm_map, &_safeCounter_, &processTmp_with_hash, BPF_ANY);
     }
 
     return 0;

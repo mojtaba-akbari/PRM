@@ -1,0 +1,21 @@
+Dear Editor,
+
+I am pleased to submit our manuscript entitled “PRM (Process Rule Management): Ancestry-Aware System Call Control for Secure High-Performance Computing Environments” for consideration in your journal.
+
+Modern High-Performance Computing (HPC) systems are increasingly critical to scientific discovery, yet they face a persistent challenge: achieving strong security guarantees without compromising computational performance. Traditional security mechanisms often introduce prohibitive overhead or lack the contextual awareness required to operate effectively in complex, multi-user HPC environments. This gap becomes especially significant in scenarios such as Trustworthy Research Environments (TREs), where sensitive data must be protected without restricting legitimate high-throughput computation.
+
+In this work, we present PRM, a novel process ancestry-based security framework that enables fine-grained, context-aware control over system calls. By evaluating the execution lineage of processes rather than relying solely on user identity or static policies, PRM can distinguish between identical operations initiated through different execution paths. This allows for more precise enforcement decisions, including the ability to restrict even privileged users such as root based on execution context.
+
+To address performance concerns, PRM incorporates an intelligent caching mechanism that achieves amortised O(1) performance for repetitive operations. This design significantly reduces overhead in large-scale, iterative workloads typical of scientific computing. Furthermore, our implementation leverages eBPF to ensure system stability while providing dynamic and efficient enforcement within containerized HPC environments.
+
+We believe this work is particularly well-suited to your journal due to its focus on systems security, high-performance computing, and practical deployment considerations. PRM bridges a critical gap between security and performance, offering a scalable solution for modern research infrastructures handling sensitive workloads.
+
+This manuscript is original, has not been published previously, and is not under consideration elsewhere. All authors have approved the submission.
+
+Thank you for your time and consideration. We look forward to your feedback.
+
+Sincerely,
+Mojtaba Akbari
+Gesellschaft f¨ur wissenschaftliche Datenverarbeitung mbH G¨ottingen
+(GWDG), G¨ottingen, Germany
+mojtaba.akbari@gwdg.de

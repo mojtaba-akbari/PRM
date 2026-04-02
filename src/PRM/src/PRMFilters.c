@@ -21,10 +21,10 @@ static __u32 filter1(struct hooks_context_t * hook, __u32 input)
     checkValidElemConfigNUMBER(real_uid, SafeUID, isValidUID=1;)
 
     if(isValidUID){
-        return 1;
+        return 0;
     }else if(isInvalidGID){
         FULLY_DEBUG(__DEBUG__, (VERBOSE | HIGH | EXTERA | NORMAL | LOWER), bpf_printk("GID %d and UID %d not accepted - Not in any safe room", real_gid, real_uid));
-        return 0;
+        return 1; // redirect to verifier 
     }
-    else return 1;
+    else return 1; // redirect to verifier
 }

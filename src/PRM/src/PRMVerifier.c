@@ -96,6 +96,10 @@ static int PRMVerifier(struct hooks_context_t *hook_ctx){
     hook_ctx->task_grandparent = grandparent;
     hook_ctx->task_parent = parent;
 
+    // Compute hashes once for fast comparison
+    __u32 comm_hash = str_to_u32(comm_buf->_buff_);
+    __u32 parent_hash = str_to_u32(p_comm_buf->_buff_);
+    __u32 grandparent_hash = str_to_u32(grand_p_comm_buf->_buff_);
     
     FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH),bpf_printk("***Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} \n", hook_ctx->key.hook,hook_ctx->key.pid, comm_buf->_buff_, p_comm_buf->_buff_, grand_p_comm_buf->_buff_));
 
@@ -120,23 +124,32 @@ static int PRMVerifier(struct hooks_context_t *hook_ctx){
             FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Hook Received: Hook(%d)-PID(%d) {%s -> %s -> %s} Check the relation : {%s,%s,%s, Action=%d, RedirectIndex=%d, Zone=%d, Hook=%d}\n", hook_ctx->key.hook, hook_ctx->key.pid,&comm_buf->_buff_[0], &p_comm_buf->_buff_[0], &grand_p_comm_buf->_buff_[0] , 
                                             prm->process , prm->parent, prm->grandparent, prm->action, prm->redirectIndex,prm->protectZone, prm->hookType)); 
             
-            if(prm->process[0] != PREFIX_NOCARE[0] && prm->process[0] != PREFIX_INVALID_BINARY[0]) {
-                if(strcmp_regx(prm->process, comm_buf->_buff_, MAX_RELATION_PROCESSNAME) != 0) continue;
-            } else if(prm->process[0] == PREFIX_INVALID_BINARY[0] && ePath->isValidDirectory == 1) {
-                continue;
-            }
+            // Symmetric rule: check if hash matches any position
+            if(prm->is_symmetric) {
+                if(prm->symmetric_hash != comm_hash && 
+                   prm->symmetric_hash != parent_hash && 
+                   prm->symmetric_hash != grandparent_hash) {
+                    continue;
+                }
+            } else {
+                // Normal rule: check each field individually
+                if(prm->process[0] != PREFIX_NOCARE[0] && prm->process[0] != PREFIX_INVALID_BINARY[0]) {
+                    if(prm->process_hash != comm_hash) continue;
+                } else if(prm->process[0] == PREFIX_INVALID_BINARY[0] && ePath->isValidDirectory == 1) {
+                    continue;
+                }
 
+                if(prm->parent[0] != PREFIX_NOCARE[0] && prm->parent[0] != PREFIX_INVALID_BINARY[0]) {
+                    if(prm->parent_hash != parent_hash) continue;
+                } else if(prm->parent[0] == PREFIX_INVALID_BINARY[0] && parent_ePath->isValidDirectory == 1) {
+                    continue;
+                }
 
-            if(prm->parent[0] != PREFIX_NOCARE[0] && prm->parent[0] != PREFIX_INVALID_BINARY[0]) {
-                if(strcmp_regx(prm->parent, p_comm_buf->_buff_, MAX_RELATION_PROCESSNAME) != 0) continue;
-            } else if(prm->parent[0] == PREFIX_INVALID_BINARY[0] && parent_ePath->isValidDirectory == 1) {
-                continue;
-            }
-
-            if(prm->grandparent[0] != PREFIX_NOCARE[0] && prm->grandparent[0] != PREFIX_INVALID_BINARY[0]) {
-                if(strcmp_regx(prm->grandparent, grand_p_comm_buf->_buff_, MAX_RELATION_PROCESSNAME) != 0) continue;
-            } else if(prm->grandparent[0] == PREFIX_INVALID_BINARY[0] && grandparent_ePath->isValidDirectory == 1) {
-                continue;
+                if(prm->grandparent[0] != PREFIX_NOCARE[0] && prm->grandparent[0] != PREFIX_INVALID_BINARY[0]) {
+                    if(prm->grandparent_hash != grandparent_hash) continue;
+                } else if(prm->grandparent[0] == PREFIX_INVALID_BINARY[0] && grandparent_ePath->isValidDirectory == 1) {
+                    continue;
+                }
             }
 
             
@@ -266,11 +279,9 @@ static int PRMVerifier(struct hooks_context_t *hook_ctx){
 
 static int detectSyscallRelations(struct hooks_context_t *hook_ctx) {
     __u32 output=0;
-    __u32 input=1;
+    __u32 input=0;
 
     __INJECT_FILTERS__(hook_ctx,input,output)
-
-    return output==0? 1 : PRMVerifier(hook_ctx);
 }
 
 static int entryStartPoint(struct hooks_context_t *hook_ctx){
@@ -280,14 +291,59 @@ static int entryStartPoint(struct hooks_context_t *hook_ctx){
     if (value && value->pid == hook_ctx->key.pid && value->magic==MAGIC_VALUE) {
         FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH),bpf_printk("Hook Received: Hook(%d)-PID(%d) Self-PID , Internal Hooks \n", hook_ctx->key.hook, hook_ctx->key.pid));
         return 0;
-    } 
+    }
+
+    // Check blacklist first - instant rejection with hash fingerprint matching
+    struct cache_record *blacklisted = bpf_map_lookup_elem(&blacklist, &hook_ctx->key);
+    if (blacklisted) {
+        // Compute current fingerprints and compare
+        if(blacklisted->is_valid_entries == 1) {
+            PRM_PROG_Dispatcher(hook_ctx, blacklisted->prog_tb_id, FINGER);
+            
+            // Check if fingerprints match
+            bool match = true;
+            for(int i=0; i < MAX_CACHE_ENTRIES; i++) {
+                if(blacklisted->cache_entries[i].is_valid == 1 && hook_ctx->key.crecord.cache_entries[i].is_valid == 1) {
+                    if(blacklisted->cache_entries[i].hash != hook_ctx->key.crecord.cache_entries[i].hash) {
+                        match = false;
+                        break;
+                    }
+                }
+            }
+            
+            if(match) {
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Hook Received: Hook(%d)-PID(%d)-TPID(%d) BLACKLISTED - Fingerprint Match - Instant Reject\n", hook_ctx->key.hook, hook_ctx->key.pid, hook_ctx->key.tpid));
+                return -EPERM;
+            }
+        } else {
+            // No fingerprints, reject all
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Hook Received: Hook(%d)-PID(%d)-TPID(%d) BLACKLISTED - Instant Reject\n", hook_ctx->key.hook, hook_ctx->key.pid, hook_ctx->key.tpid));
+            return -EPERM;
+        }
+    }
 
     if(!checkLRUCache(hook_ctx)) {
         FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH),bpf_printk("Hook Received: Hook(%d)-PID(%d) Matched with process white list \n", hook_ctx->key.hook, hook_ctx->key.pid));
         return 0;
     }
 
-    if(detectSyscallRelations(hook_ctx)){
+    if(detectSyscallRelations(hook_ctx) && PRMVerifier(hook_ctx)){
+        // Add to blacklist on rejection with hash fingerprints
+        if(hook_ctx->key.crecord.is_valid_entries == 1) {
+            __u32 crecord_key = generate_tmp_ukey(hook_ctx->key.pid, hook_ctx->key.tpid) + 500;
+            struct cache_record *crecord = cache_record_memory_allocate(&crecord_key, NULL);
+            if (crecord) {
+                bpf_probe_read(crecord, sizeof(*crecord), &hook_ctx->key.crecord);
+                bpf_map_update_elem(&blacklist, &hook_ctx->key, crecord, BPF_ANY);
+                cache_record_memory_delete(&crecord_key);
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Hook Received: Hook(%d)-PID(%d)-TPID(%d) REJECTED - Added to Blacklist with Fingerprints\n", hook_ctx->key.hook, hook_ctx->key.pid, hook_ctx->key.tpid));
+            }
+        } else {
+            // No fingerprints, blacklist all
+            bpf_map_update_elem(&blacklist, &hook_ctx->key, &hook_ctx->key.crecord, BPF_ANY);
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("Hook Received: Hook(%d)-PID(%d)-TPID(%d) REJECTED - Added to Blacklist\n", hook_ctx->key.hook, hook_ctx->key.pid, hook_ctx->key.tpid));
+        }
+        
         return -EPERM;
     }
 

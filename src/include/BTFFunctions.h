@@ -51,25 +51,31 @@ static __u32 strcmp_regx(const char *s1, const char *s2, const __u32 len) {
     for (__u32 i = 0; i < len && i < MAX_STR; i++, p1++, p2++) {
         char c1 = *p1, c2 = *p2;
         
-        if (c1 == WILDCARD) return 0;  // Wildcard - skip comparison
         if (c1 == '\0' || c2 == '\0') return (c1 == c2) ? 0 : 1;
         if (c1 != c2) return 1;
     }
     return 0;
 }
-// Mojtaba , strcmp
-// Notice , define MAX_ITR->MIN_ITR so short because of long loop
-// Define Len to just make it safer than simple \0 way
-// No need to use bpf helper , it causes extra heavy jumps
-static __u32 strcmp(const char *s1, const char *s2, const __u32 len) {
-
+// Mojtaba , strcmp - optimized for eBPF verifier with bounded arrays
+static __u32 strcmp_bounded(const char s1[MAX_RELATION_PROCESSNAME], const char s2[MAX_RELATION_PROCESSNAME]) {
     if(s1[0] == '\0' || s2[0] == '\0') return 1;
     
-    for (__u32 i = 0; i < len; i++) {
-        if (s1[i] != s2[i]) return 1;  // Mismatch found
-        if (s1[i] == '\0' && s2[i] == '\0') return 0;  // Both reached end
+    #pragma unroll
+    for (__u32 i = 0; i < MAX_RELATION_PROCESSNAME && i < 16; i++) {
+        if (s1[i] != s2[i]) return 1;
+        if (s1[i] == '\0' && s2[i] == '\0') return 0;
     }
+    return 0;
+}
 
+// Keep old strcmp for compatibility
+static __u32 strcmp(const char *s1, const char *s2, const __u32 len) {
+    if(s1[0] == '\0' || s2[0] == '\0') return 1;
+    
+    for (__u32 i = 0; i < len && i < 16; i++) {
+        if (s1[i] != s2[i]) return 1;
+        if (s1[i] == '\0' && s2[i] == '\0') return 0;
+    }
     return 0;
 }
 // Mojtaba , strcmp_nolen

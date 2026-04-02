@@ -41,7 +41,7 @@ installation()
       - name: rocker
         sudo: ALL=(ALL) NOPASSWD:ALL
         ssh_authorized_keys:
-          - $(cat ~/.ssh/id_rsa.pub)
+          - $(cat ~/.ssh/id_ed25519.pub)
     packages:
       - clang
       - llvm

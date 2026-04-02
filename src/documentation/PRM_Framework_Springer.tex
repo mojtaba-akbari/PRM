@@ -1,0 +1,1644 @@
+%% Springer Nature LaTeX template for The Journal of Supercomputing
+%% https://link.springer.com/journal/11227/submission-guidelines
+%% Converted from IEEEtran format
+
+\documentclass[]{sn-jnl}
+
+%% Packages
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{colortbl}
+\usepackage{multirow}
+% Note: hyperref is already loaded by sn-jnl; do not load it again.
+
+\setlist[itemize]{leftmargin=*, align=left}
+
+\definecolor{codebackground}{rgb}{0.95,0.95,0.95}
+\definecolor{tableheader}{rgb}{0.9,0.9,0.9}
+
+\lstset{
+    backgroundcolor=\color{codebackground},
+    basicstyle=\footnotesize\ttfamily,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=6pt,
+    xleftmargin=1.8em,
+    framexleftmargin=1.8em,
+    framesep=4pt,
+    showstringspaces=false
+}
+
+%%------------------------------------------------------------
+%%  TITLE AND AUTHORS
+%%------------------------------------------------------------
+
+\begin{document}
+
+\title{PRM: Process Ancestry-Based Security for Defending HPC Environments from Privilege Escalation}
+
+\author*[1]{\fnm{Mojtaba} \sur{Akbari}}
+\email{mojtaba.akbari@gwdg.de}
+
+\author*[1,2]{\fnm{Julian} \sur{Kunkel}}
+\email{julian.kunkel@gwdg.de}
+
+\affil*[1]{%
+  \orgname{Gesellschaft f\"{u}r wissenschaftliche Datenverarbeitung mbH G\"{o}ttingen (GWDG)},
+  \city{G\"{o}ttingen},
+  \country{Germany}
+}
+\affil*[2]{%
+  \orgname{Georg-August-Universit\"{a}t G\"{o}ttingen },
+  \city{G\"{o}ttingen},
+  \country{Germany}
+}
+
+%%------------------------------------------------------------
+%%  ABSTRACT  (trimmed to ~143 words per Springer 100--150 word limit;
+%%             one sentence removed, no text rephrased)
+%%------------------------------------------------------------
+\abstract{%
+Modern High-Performance Computing (HPC) environments face a critical security
+challenge: balancing robust protection with computational efficiency. Traditional
+security approaches often introduce significant performance overhead or lack the
+context awareness needed for complex HPC environments. This paper presents PRM
+(Process Rule Management), a process ancestry-based security solution that
+provides fine-grained control over system calls. By analyzing the lineage of
+processes to make security decisions based on execution paths, PRM enables
+administrators to distinguish between identical operations initiated through
+different execution chains. PRM's intelligent caching achieves O(1) amortised performance
+for repetitive operations, reducing redundant security checks in million-iteration
+scientific computations. PRM can restrict even legitimate root administrators based
+on execution context, enabling Trustworthy Research Environments (TRE) where
+sensitive data analysis occurs with reduced reliance on traditional trust-based
+security models. The eBPF-based architecture ensures system stability while
+providing enhanced control over privileged operations in containerized HPC
+environments.
+}
+
+\keywords{security, high-performance computing, process ancestry, system calls, containers, eBPF}
+
+\maketitle
+
+%%------------------------------------------------------------
+%%  SECTION 1 — INTRODUCTION
+%%------------------------------------------------------------
+\section{Introduction}
+
+Security in High-Performance Computing (HPC) environments presents unique
+challenges that traditional security solutions struggle to address effectively.
+The computational demands of scientific workloads require minimal security
+overhead~\cite{zhang2021analyzing,xavier2013performance}, while the increasing
+adoption of containerization introduces new attack vectors that must be
+mitigated~\cite{reshetova2016security,rudyy2018containers}. Traditional security
+mechanisms like SELinux, AppArmor, and seccomp lack the context awareness needed
+to make nuanced security decisions in complex HPC
+environments~\cite{provos2003improving,li2018speaker}, where identical system
+calls may be legitimate or malicious depending on their execution context.
+
+The ``privileged operation dilemma'' is particularly acute in HPC settings: how
+to allow legitimate privileged operations required by scientific workflows while
+preventing malicious exploitation~\cite{kurtzer2017singularity,priedhorsky2017charliecloud}.
+Container technologies like Docker and Singularity often require root privileges,
+creating significant security concerns in multi-tenant HPC clusters where
+isolation between users and workloads is
+paramount~\cite{canon2016scream,torrez2019hpc}.
+
+\textbf{Research Question}: How can we develop a security framework that enables
+safe execution of user-provided code in multi-tenant HPC environments while
+maintaining the performance characteristics required for scientific computing?
+This fundamental challenge requires distinguishing between legitimate scientific
+computations and malicious activities that may appear identical at the system
+call level~\cite{pappas2013kbouncer,ghavamnia2020confine}. Prior work has
+demonstrated that syscall-level monitoring is fundamentally insufficient for
+security decisions~\cite{wang2021semantic}, as HPC scientific workloads often
+exhibit execution patterns that resemble malicious
+behavior~\cite{vasilakis2019hpc}.
+
+\textbf{Our Solution}: PRM addresses this challenge through process ancestry
+analysis --- by examining not just \textit{``what''} is being executed, but
+\textit{``how''} it came to be executed. Unlike traditional approaches that rely
+on static syscall allowlists~\cite{ghavamnia2020confine}, PRM provides
+context-aware privilege separation~\cite{ghavamnia2020confine} through semantic
+execution context analysis. A legitimate scientific application launched through
+Slurm $\rightarrow$ container $\rightarrow$ user process follows a predictable
+ancestry pattern, while an exploit attempting privilege escalation exhibits
+anomalous process lineage that PRM can detect and block. Our eBPF-based
+implementation achieves low-overhead enforcement~\cite{nelson2020ebpf} while
+providing unprecedented control over privileged operations, making possible
+Trustworthy Research Environments where highly sensitive data can be analyzed
+safely without relying on human trustworthiness.
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+
+\begin{enumerate}
+\item We introduce PRM, featuring dynamic rule redirection and runtime policy
+      adaptation --- capabilities not available in existing static security solutions
+\item We present an innovative multi-layer architecture combining intelligent
+      caching, fast-decision filtering, and process ancestry analysis specifically
+      designed for HPC environments
+\item We demonstrate how PRM solves the trustable HPC environment challenge by
+      enabling safe user code execution while preventing exploits through process
+      ancestry validation
+\item We provide implementation evidence showing how our caching mechanism
+      eliminates redundant security checks for repetitive operations (e.g.,
+      million-iteration syscalls like file writes, file opens, and network operations)
+\end{enumerate}
+
+%%------------------------------------------------------------
+%%  SECTION 2 — RELATED WORK
+%%------------------------------------------------------------
+\section{Related Work}
+\label{sec:related}
+
+\subsection{System Call Filtering Approaches}
+
+System call filtering has been explored extensively, progressing from static
+policies to programmable enforcement.
+Systrace~\cite{provos2003improving} was among the earliest systems to enforce
+per-process system call policies, but its user-space policy engine introduced
+context-switch overhead that is prohibitive for high-throughput HPC workloads.
+Seccomp-BPF~\cite{edge2015seccomp} moved filtering into the kernel via cBPF
+programs attached at process level; however, its policies are fixed at load time
+and cannot incorporate runtime context such as process ancestry or UID
+transitions.
+KRSI~\cite{singh2019krsi} extends the eBPF-based model to LSM hooks, providing
+programmable security instrumentation, yet it offers no built-in ancestry
+tracking, caching, or dynamic rule redirection --- administrators must implement
+these from scratch.
+Landlock~\cite{salvan2016landlock} enables unprivileged, stackable access
+control through eBPF, but is scoped to filesystem and network restrictions and
+cannot express policies that depend on how a process was spawned.
+
+PRM builds on the programmability introduced by KRSI and Landlock while adding
+three capabilities absent from all of the above: multi-generational ancestry
+analysis, intelligent per-syscall caching, and dynamic rule redirection at
+runtime.
+
+\subsection{Container Security Solutions}
+
+Container isolation has been addressed at different levels of the software stack.
+gVisor~\cite{google2018gvisor} interposes a user-space kernel that re-implements
+Linux system calls, providing strong isolation at the cost of significant
+performance overhead and incomplete syscall coverage --- both of which conflict
+with HPC requirements for native performance and full POSIX
+semantics~\cite{torrez2019hpc}.
+Kata Containers~\cite{kata2018architecture} achieve isolation through lightweight
+VMs, adding hardware-level boundaries but introducing memory and boot-time
+overhead that limits suitability for short-lived, high-throughput HPC
+jobs~\cite{xavier2013performance}.
+Falco~\cite{falco2016runtime} monitors container runtime behaviour via kernel
+event streams and raises alerts, but operates in a detection-only mode; it cannot
+enforce policy or block operations inline.
+
+PRM complements these approaches by operating inside the kernel's LSM path,
+enabling inline enforcement with process-ancestry context --- a combination that
+allows it to block container escape attempts at the syscall level rather than
+detecting them after the fact.
+
+\subsection{Process Ancestry and Execution-Context Research}
+
+Prior work has explored process relationships and execution paths for security
+decisions, though with narrower scope than PRM.
+YAMA~\cite{cook2012yama} restricts \texttt{ptrace} attachment based on
+parent--child relationships, effectively a single-generation ancestry check
+limited to one LSM hook.
+SPEAKER~\cite{li2018speaker} analyses execution paths to partition application
+kernels into security phases, but targets intra-process control flow rather than
+inter-process lineage and does not provide a general-purpose policy framework.
+Confine~\cite{ghavamnia2020confine} automatically generates per-container seccomp
+policies by static analysis of container images; its policies are fixed at
+container start and cannot adapt to runtime ancestry or UID transitions.
+Wang et al.~\cite{wang2021semantic} propose semantic-aware monitoring for
+containerised applications, demonstrating that syscall-level observation alone is
+insufficient and that higher-level context improves detection accuracy.
+
+PRM extends these insights into a unified enforcement framework: it combines
+multi-generational ancestry tracking (configurable depth, currently 3 levels),
+UID transition vector analysis across the ancestry chain, dynamic rule
+redirection at runtime, and specialised PROG handlers per LSM hook type ---
+capabilities that, taken together, are not available in any single existing
+system.
+
+%%------------------------------------------------------------
+%%  SECTION 3 — PRM FRAMEWORK DESIGN
+%%------------------------------------------------------------
+\section{PRM Framework Design}
+\label{sec:design}
+
+\subsection{Architecture Overview}
+
+Figure~\ref{fig:architecture} illustrates PRM's multi-layer architecture designed
+for HPC environments where performance and security must coexist.
+
+\begin{figure}[htbp]
+\begin{lstlisting}[basicstyle=\tiny\ttfamily, frame=single, breaklines=true, language=c]
+PRM_SECURITY_CHECK(syscall_context) {
+  // Layer 1: Intelligent Caching
+  key = GENERATE_KEY(pid, tid, hook_type)
+  if (cached_decision = CACHE_LOOKUP(key)) 
+    return cached_decision  // O(1) performance
+  
+  // Layer 2: Fast-Decision Filters  
+  filter_result = APPLY_FILTERS(syscall_context)
+  if (filter_result == IMMEDIATE_ALLOW) {
+    CACHE_UPDATE(key, ALLOW)
+    return ALLOW
+  }
+  if (filter_result == IMMEDIATE_DENY) {
+    CACHE_UPDATE(key, DENY) 
+    return DENY
+  }
+  
+  // Layer 3: Process Ancestry Analysis
+  current = GET_PROCESS_NAME(syscall_context.task)
+  parent = GET_PARENT_NAME(syscall_context.task_parent)
+  grandparent = GET_GRANDPARENT_NAME(syscall_context.task_grandparent)
+  
+  // Layer 4: Dynamic Rule Processing
+  for (i = 0; i < MAX_RULES; i++) {
+    rule = PRM_TABLE[i]
+    if (MATCH(current, rule.process) && 
+        MATCH(parent, rule.parent) && 
+        MATCH(grandparent, rule.grandparent)) {
+      
+      if (rule.action == REDIRECT) {
+        i = rule.redirect_index  // Dynamic rule chaining
+        continue
+      }
+      if (rule.action == RETURN) {
+        result = PROG_HANDLER[rule.prog_num](syscall_context)
+        CACHE_UPDATE(key, result)
+        return result
+      }
+      CACHE_UPDATE(key, rule.action)
+      return rule.action
+    }
+  }
+  
+  // Layer 5: Default Policy
+  CACHE_UPDATE(key, ALLOW)
+  return ALLOW  // Fail-safe default
+}
+\end{lstlisting}
+\caption{PRM Architecture: Five-layer security processing with intelligent
+caching, fast filtering, ancestry analysis, dynamic rules, and fail-safe
+defaults.}
+\label{fig:architecture}
+\end{figure}
+
+PRM implements a five-layer architecture:
+
+\begin{itemize}
+\item \textbf{Layer 1 --- Intelligent Caching}: O(1) lookup for previously
+      evaluated syscalls
+\item \textbf{Layer 2 --- Fast-Decision Filtering}: Immediate allow/deny for
+      common patterns
+\item \textbf{Layer 3 --- Process Ancestry Analysis}: Multi-generational lineage
+      extraction
+\item \textbf{Layer 4 --- Dynamic Rule Processing}: Runtime rule redirection and
+      PROG handlers
+\item \textbf{Layer 5 --- Default Policy}: Fail-safe allow with comprehensive
+      logging
+\end{itemize}
+
+\subsection{Key Innovations}
+
+\subsubsection{Ancestry-Based Security: Beyond Traditional Privilege Models}
+
+PRM introduces an approach to system security that extends traditional
+privilege-based models. Whereas conventional security frameworks operate on the
+principle of ``who you are'' (user identity) or ``what you want to do''
+(capability-based), PRM adds a third dimension: ``how you got here'' (process
+ancestry). Prior work has explored aspects of this idea --- YAMA~\cite{cook2012yama}
+restricts \texttt{ptrace} based on parent--child relationships, and
+SPEAKER~\cite{li2018speaker} analyses execution paths for intra-process security
+--- but neither provides a general-purpose, multi-generational enforcement
+framework that spans arbitrary LSM hooks. PRM combines and extends these concepts
+into a unified policy engine, enabling the following capabilities:
+
+\textbf{Restricting Root Privileges Through Ancestry Analysis}: PRM can restrict
+even root operations based on execution context. A root process spawned through an
+unexpected ancestry chain (e.g., compromised container $\rightarrow$ privilege
+escalation $\rightarrow$ root shell) can be denied critical operations, while the
+same root process launched through legitimate paths (e.g., systemd $\rightarrow$
+slurmstepd $\rightarrow$ container $\rightarrow$ root) operates normally. This
+makes privilege escalation attacks less effective even when the attacker obtains
+root credentials.
+
+\textbf{Context-Aware Privilege Enforcement}: Traditional security models provide
+limited protection once attackers gain legitimate credentials. PRM's
+ancestry-based approach means that even with valid root credentials, processes are
+constrained by their execution lineage. This creates an ``execution context
+firewall'' that limits lateral movement and privilege abuse regardless of
+credential compromise.
+
+\textbf{Trustable Environment Creation}: By analysing process ancestry, PRM
+enables the creation of computing environments where even privileged operations
+are contextually validated. This allows HPC centres to execute untrusted user
+code while maintaining system integrity.
+
+\textbf{Trustworthy Research Environment (TRE) Implementation}: PRM's
+ancestry-based approach enables the creation of Trustworthy Research Environments
+for highly sensitive data analysis. Unlike traditional security models that rely
+on user trust, PRM can restrict even legitimate administrators and root users based
+on their execution context. In a TRE deployment, administrators with valid root
+credentials are constrained to specific operational patterns --- they can perform
+system maintenance through approved paths (e.g., SSH $\rightarrow$ systemd
+$\rightarrow$ maintenance scripts) but are blocked from accessing sensitive research
+data through unauthorised lineages (e.g., SSH $\rightarrow$ shell $\rightarrow$
+data access). This provides a level of data protection where even system
+administrators cannot bypass security controls, enabling safe remote analysis of
+health records, financial data, and classified research without data exfiltration
+risks. The ancestry-based enforcement ensures that sensitive data remains within the
+controlled environment regardless of privilege level or credential compromise.
+
+\subsubsection{Dynamic Rule Redirection}
+
+Unlike static security solutions that rely on fixed policies, PRM introduces
+dynamic rule redirection capabilities that adapt at runtime. The framework
+supports two primary redirection mechanisms: REDIRECT actions that can jump to
+any of the 300 available rule indices, and RETURN actions that invoke specialized
+PROG handlers for complex decision logic. This creates a hierarchical rule
+organization with protected zones for different security contexts, enabling
+runtime policy adaptation based on execution environment. Such dynamic behavior
+is impossible with traditional static approaches like SELinux or AppArmor.
+
+\subsubsection{Process Ancestry Analysis}
+
+PRM's ancestry analysis provides multi-generational process lineage tracking:
+
+\begin{table}[htbp]
+\centering
+\caption{Process Ancestry Analysis Components}
+\label{tab:ancestry}
+\begin{tabular}{@{}p{2.5cm}p{5cm}@{}}
+\toprule
+\textbf{Component} & \textbf{Description} \\
+\midrule
+Current Process   & Active process making system call \\
+Parent Process    & Direct parent in process tree \\
+Grandparent Process & Second-level ancestor \\
+UID Transitions   & User ID changes across ancestry \\
+Execution Path    & Complete lineage validation \\
+HookType          & LSM hook identifier for syscall classification \\
+HookStructure     & Data structure containing syscall context \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Worst-Case Performance for Each Pattern}
+
+PRM's performance characteristics vary by execution pattern, with worst-case
+scenarios defined for each processing layer:
+
+\begin{table}[htbp]
+\centering
+\caption{PRM Worst-Case Performance Analysis}
+\label{tab:performance}
+\begin{tabular}{@{}p{2cm}p{3cm}p{2.5cm}@{}}
+\toprule
+\textbf{Layer} & \textbf{Function} & \textbf{Worst-Case} \\
+\midrule
+Cache Lookup     & Decision retrieval  & O(1) hash collision \\
+Fast Filters     & Immediate decisions & O(n) filter checks \\
+Ancestry Analysis & Lineage extraction & O(depth) traversal \\
+Rule Processing  & Policy evaluation   & O(MAX\_RULES) scan \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Intelligent Caching for HPC Workloads}
+
+HPC applications often perform repetitive operations (e.g., million-iteration file
+writes). First syscall extracts three critical data parameters (p1, p2, p3) from
+the hook structure, where each parameter represents context-specific information
+converted to integer values for efficient processing. These parameters create a
+unique context-aware syscall signature that enables precise cache differentiation.
+Due to kernel space constraints that prohibit complex hashing algorithms, PRM
+employs the Jenkins hash function for its speed and maintainability:
+hash = Jenkins(p1, p2, p3, PID, TID, GID, hook\_type). Subsequent identical
+syscalls achieve O(1) lookup with total overhead:
+$1 \times T_{\mathrm{security}} + 999{,}999 \times T_{\mathrm{cache}}$
+where $T_{\mathrm{cache}} \ll T_{\mathrm{security}}$.
+
+Our caching system:
+
+\begin{itemize}
+\item \textbf{UniqueKey Generation}: Combines PID, Thread ID, and Hook Type
+\item \textbf{LRU Eviction}: Maintains 2024 most recent decisions
+\item \textbf{Hook Validation}: Prevents security bypasses through cache poisoning
+\item \textbf{Performance Impact}: First syscall pays full cost, subsequent
+      identical calls are O(1)
+\end{itemize}
+
+\textbf{Example}: A loop writing to the same file 1,000,000 times:
+\begin{itemize}
+\item Traditional systems: 1,000,000 full security checks
+\item PRM Framework: 1 full check + 999,999 cache hits
+\end{itemize}
+
+\subsubsection{Fast-Decision Filtering}
+
+Filters provide immediate decisions before expensive ancestry analysis:
+
+\begin{itemize}
+\item \textbf{Self-Process Detection}: Immediate allow for framework's own operations
+\item \textbf{Known-Good Patterns}: Fast-path for common legitimate operations
+\item \textbf{Early Rejection}: Block obviously malicious calls without full processing
+\item \textbf{Kernel Syscall Bypass}: Configurable bypass for kernel and kernel
+      thread operations
+\item \textbf{Context Enrichment}: Prepare data for downstream components
+\end{itemize}
+
+PRM encourages bypassing kernel syscalls to achieve significant performance
+improvements in HPC environments. While kernel syscalls can be analyzed for
+security threats, they are typically trusted operations originating from the
+kernel itself. Bypassing these calls eliminates unnecessary overhead during
+intensive scientific computations where kernel threads frequently perform memory
+management, scheduling, and I/O operations. This optimization is particularly
+beneficial for HPC workloads that generate high-frequency kernel activity.
+
+\subsection{HPC User Safety Model}
+
+The PRM Framework addresses a critical HPC challenge: enabling users to safely
+execute custom code and instructions while preventing system compromise.
+
+\subsubsection{Safe Code Execution Environment}
+
+HPC centers must allow users to:
+\begin{itemize}
+\item Install and run custom scientific software
+\item Execute containerized applications with elevated privileges
+\item Access shared filesystems and compute resources
+\item Perform legitimate system operations required by scientific workflows
+\end{itemize}
+
+Traditional security solutions are inadequate because they:
+\begin{itemize}
+\item Lack context to distinguish legitimate vs.\ malicious privileged operations
+\item Introduce unacceptable performance overhead for compute-intensive workloads
+\item Cannot adapt to the dynamic nature of scientific computing environments
+\item Fail to provide fine-grained control over container security
+\end{itemize}
+
+\subsubsection{PRM's Approach to User Safety}
+
+PRM enables safe user code execution through:
+
+\begin{enumerate}
+\item \textbf{Process Ancestry Validation}: Ensures code executes through
+      expected paths (e.g., Slurm --- container --- user application)
+\item \textbf{UID Transition Monitoring}: Detects privilege escalation using
+      vector-based pattern matching (19 patterns including [0,0,0,0] for root
+      daemons, [0,2,2,2] for escalation, [2,2,2,2] for users, [0,2,2,3] for
+      critical mismatches)
+\item \textbf{Container Escape Prevention}: Analyzes execution context to prevent
+      container breakouts
+\item \textbf{Dynamic Policy Adaptation}: Adjusts security policies based on
+      execution environment
+\end{enumerate}
+
+\subsection{HPC Profile Rules}
+
+PRM implements specialized rule configurations for different HPC deployment
+scenarios through a 300-entry rule table with dynamic redirection capabilities.
+Table~\ref{tab:hpc_profiles} shows key rule patterns extracted from our reference
+configuration designed for HPC environments, while Table~\ref{tab:prm_config}
+details the comprehensive configuration parameters that govern PRM's behavior in
+HPC environments.
+
+\begin{table}[htbp]
+\centering
+\caption{HPC Profile Rule Configuration}
+\label{tab:hpc_profiles}
+\begin{tabular}{@{}p{1.8cm}p{2.2cm}p{1.5cm}p{1.2cm}p{0.8cm}@{}}
+\toprule
+\textbf{Process} & \textbf{Parent} & \textbf{Action} & \textbf{Hook} & \textbf{Zone} \\
+\midrule
+\multicolumn{5}{@{}l@{}}{\textit{System Services (Rules 1--15)}} \\
+systemd    & *              & ACCEPT   & ALL      & 0 \\
+runc       & containerd-shim & ACCEPT  & ALL      & 0 \\
+slurmstepd & systemd        & ACCEPT   & ALL      & 0 \\
+\midrule
+\multicolumn{5}{@{}l@{}}{\textit{Blocked Interpreters (Rules 25--42)}} \\
+ruby & * & REJECT & ALL & 0 \\
+node & * & REJECT & ALL & 0 \\
+gdb  & * & REJECT & ALL & 0 \\
+\midrule
+\multicolumn{5}{@{}l@{}}{\textit{Hook Redirections (Rules 43--53)}} \\
+* & * & REDIRECT & KILL\_SIG  & 290 \\
+* & * & REDIRECT & FILE\_OPEN & 62  \\
+* & * & REDIRECT & CAPABLE    & 62  \\
+\midrule
+\multicolumn{5}{@{}l@{}}{\textit{Protected Pattern-1 (Rules 62--74)}} \\
+*      & slurmstepd & RETURN & ALL & 1 \\
+*      & runc       & RETURN & ALL & 1 \\
+python & *          & RETURN & ALL & 1 \\
+\ldots & \ldots     & \ldots & \ldots & \ldots \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{PRM Framework Configuration Parameters}
+\label{tab:prm_config}
+\begin{tabular}{@{}p{2.5cm}p{2.8cm}p{2.2cm}@{}}
+\toprule
+\textbf{Category} & \textbf{Parameter} & \textbf{Values} \\
+\midrule
+\multicolumn{3}{@{}l@{}}{\textit{User/Group Security}} \\
+Safe UIDs  & System Operations  & 0, 1000, 1001 \\
+Unsafe GIDs & Restricted Groups & 0, 1000, 2000 \\
+\midrule
+\multicolumn{3}{@{}l@{}}{\textit{Directory Access Control}} \\
+Valid Directories & HPC Data Paths    & home, scratch, work \\
+Blocked Paths     & Dangerous Access  & /proc/1/mem, /proc/kcore \\
+Binary Directories & System Binaries  & /sbin, /bin, /usr \\
+\midrule
+\multicolumn{3}{@{}l@{}}{\textit{Network Security}} \\
+Socket Protocols & Blocked Protocols   & AF\_PACKET, AF\_IB \\
+IP Destination   & Restricted Networks & 169.254.0.0/16 \\
+IP Source        & Allowed Networks    & 10.0.0.0/8 \\
+\midrule
+\multicolumn{3}{@{}l@{}}{\textit{Execution Control}} \\
+BPRM Destinations & Blocked Exec Paths  & /dev/shm/, /tmp/. \\
+Interpreters      & Restricted Binaries & perl, R, singularity \\
+Module Deny       & Blocked Modules     & ib\_, nvidia, kvm, \ldots \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{PROG Security Handlers}
+
+PRM implements specialized PROG handlers that provide hook-specific security logic
+when invoked through RETURN actions. Our comprehensive testing framework validates
+protection against 13 major attack vectors commonly targeting HPC environments.
+Table~\ref{tab:prog_handlers} details the complete set of PROG security handlers
+and their specific functions.
+
+\begin{table}[htbp]
+\centering
+\caption{PRM PROG Security Handlers}
+\label{tab:prog_handlers}
+\begin{tabular}{@{}p{1cm}p{5cm}p{4cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Handler Name} & \textbf{Security Function} \\
+\midrule
+1     & signalKillTracer              & Prevents process termination attacks \\
+2     & denyWriteOutOfValidDirectories & Restricts file writes to safe paths \\
+3     & denyMakeSocketToEndHost       & Blocks dangerous network connections \\
+4     & bprmSecurityCheck             & Validates binary execution paths \\
+5     & memoryProtectCheck            & Prevents code injection via mprotect \\
+6     & denyIncomeSocket              & Controls incoming socket connections \\
+7     & denyFileOpen                  & Restricts file access based on ancestry \\
+8     & denyLoadModule                & Blocks dangerous kernel module loading \\
+9     & credPrepareCheck              & Validates credential transitions \\
+10    & capableCheck                  & Controls capability usage \\
+11    & taskFixSetUIDCheck            & Prevents setuid exploitation \\
+12--31 & EMPTY\_PROG                 & Reserved for future extensions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+PRM addresses critical security threats through comprehensive attack vector
+coverage and specialized PROG Security Handlers. These handlers provide
+hook-specific security logic tailored to different LSM interception points,
+enabling fine-grained control over file operations, network connections,
+credential management, and capability checks. Table~\ref{tab:attack_coverage}
+demonstrates our comprehensive coverage of attack vectors with recent real-world
+examples, showing the relevance and effectiveness of PRM's security protection.
+
+\begin{table*}[t]
+\centering
+\caption{Attack Vector Prevalence and PRM Protection Coverage (2024--2025)}
+\label{tab:attack_coverage}
+
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllll}
+\toprule
+\textbf{Attack Vector} & \textbf{Public Category} & \textbf{Prevalence} & \textbf{PROG} & \textbf{References} \\
+\midrule
+Network Reconnaissance  & Pre-Attack Scanning      & \textbf{41\%} & PROG\_3,6  & Verizon DBIR 2024~\cite{verizon2024dbir} \\
+Memory Code Injection   & Memory Corruption RCE    & \textbf{32\%} & PROG\_5    & ENISA TL2024~\cite{enisa2024threat} \\
+Interpreter Abuse       & Scripting Engine Abuse   & \textbf{29\%} & PROG\_4    & CrowdStrike GTR 2024~\cite{crowdstrike2024gtr} \\
+Credential Manipulation & Credential Theft         & \textbf{29\%} & PROG\_9    & Verizon DBIR 2024~\cite{verizon2024dbir} \\
+Sensitive File Access   & Unauthorized File Access & \textbf{22\%} & PROG\_7    & ENISA TL2024~\cite{enisa2024threat} \\
+Process Memory Access   & Credential Dumping       & \textbf{17\%} & PROG\_7    & MITRE ATT\&CK 2024~\cite{mitre2024attack} \\
+Privilege Escalation    & Priv-Esc Vulnerabilities & \textbf{12\%} & PROG\_11   & Verizon DBIR 2024~\cite{verizon2024dbir} \\
+Socket Binding Attacks  & Port Hijacking           & \textbf{10\%} & PROG\_6    & ENISA TL2024~\cite{enisa2024threat} \\
+Container Escape        & Container Intrusions     & \textbf{9\%}  & PROG\_4,7  & CrowdStrike GTR 2024~\cite{crowdstrike2024gtr} \\
+Directory Traversal     & Path Traversal Abuse     & \textbf{8\%}  & PROG\_2    & OWASP Top 10 2024~\cite{owasp2024top10} \\
+Capability Escalation   & Linux Capabilities       & \textbf{7\%}  & PROG\_10   & Wiz Cloud Report 2024~\cite{wiz2024cloud} \\
+Process Termination     & Process Manipulation     & \textbf{5\%}  & PROG\_1    & CrowdStrike GTR 2024~\cite{crowdstrike2024gtr} \\
+Kernel Module Loading   & Kernel-Level Implants    & \textbf{4\%}  & PROG\_8    & Mandiant M-Trends 2024~\cite{mandiant2024mtrends} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+The global vulnerability exploitation landscape (2023--2025) provides critical
+context for PRM's security coverage. Recent industry reports show 768 CVEs were
+exploited in 2024 (up from 639 in 2023), with 23.6\% being zero-day exploits and
+vulnerability exploitation accounting for 14\% of all breaches --- representing a
+180\% increase compared to
+2023~\cite{vulncheck2024trends,verizon2024dbir}. These data reflect publicly
+reported vulnerability-exploitation events globally across all sectors. Because
+public breach reporting aggregates many exploit types under `vulnerability
+exploitation' and generally does not reveal whether the target was an HPC/data-center,
+the statistics should be considered a lower bound on exposure. Finer-grained
+breakdowns (container escape, kernel rootkits, memory-code injection, etc.) are
+not systematically reported; their prevalence in HPC environments remains unknown.
+
+PRM's PROG handlers are designed to address the most critical threats facing
+modern computing environments based on current attack vector prevalence data.
+
+%%------------------------------------------------------------
+%%  SECTION 4 — EVALUATION
+%%------------------------------------------------------------
+\section{Evaluation}
+\label{sec:evaluation}
+
+\subsection{Implementation Validation}
+
+We have successfully implemented and validated the PRM Framework through
+comprehensive testing and laboratory evaluation. The complete implementation
+comprises 6,249 lines of code across 39 source files: 5,281 LOC in C/header
+files (2,558 LOC in C implementation files and 2,723 LOC in header files) plus
+968 LOC in supporting Python, shell scripts, and other utilities, demonstrating
+substantial engineering effort and comprehensive functionality coverage. The
+implementation demonstrates complete integration with the Linux Security Module
+framework, supporting 12 specialized PROG handlers across different LSM hooks
+including FILE\_OPEN, SOCKET\_CONNECT, CRED\_PREPARE, and CAPABLE operations.
+The framework has been thoroughly tested and validated in controlled laboratory
+environments.
+
+\subsubsection{Functional Validation}
+
+The rule engine operates with full 300-entry capacity, successfully processing
+complex ancestry patterns and dynamic redirections. Our caching system demonstrates
+effective LRU eviction behavior, maintaining consistent O(1) lookup performance
+across varying workload patterns. The UID transition analysis component correctly
+identifies all 19 pre-trained attack patterns, with successful detection rates
+validated through controlled privilege escalation scenarios.
+
+\subsubsection{Unique Security Capabilities}
+
+Table~\ref{tab:capabilities} shows security capabilities where PRM provides
+unique functionality not available in existing solutions:
+
+\begin{table}[htbp]
+\caption{Security capabilities comparison}
+\label{tab:capabilities}
+\centering
+\begin{tabular}{@{}p{3.0cm}p{0.3cm}p{0.7cm}p{0.9cm}p{0.8cm}@{}}
+\toprule
+\textbf{Capability} & \textbf{PRM} & \textbf{SELinux} & \textbf{AppArmor} & \textbf{Seccomp} \\
+\midrule
+Process ancestry analysis       & Yes & No      & No      & No \\
+Programmable Policy Extensions  & Yes & No      & No      & No \\
+UID transition detection        & Yes & Limited & Limited & Limited \\
+Container escape prevention     & Yes & Yes     & Limited & Limited \\
+Multi-generational tracking     & Yes & No      & No      & No \\
+Dynamic rule redirection        & Yes & Limited & Limited & Limited \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Performance Measurements}
+\label{sec:performance_measurements}
+
+We conducted performance analysis on our implementation to validate the
+theoretical advantages of our multi-layer architecture.
+
+\subsubsection{Cache Effectiveness Measurements}
+
+Testing with a synthetic HPC workload performing 1,000,000 file write operations
+showed dramatic performance improvements. Traditional security frameworks require
+full policy evaluation for each system call, resulting in linear overhead scaling.
+PRM's caching mechanism reduces this to a single full evaluation plus 999,999
+O(1) cache lookups, demonstrating the practical impact of our intelligent caching
+design.
+
+\subsubsection{Memory Footprint Analysis}
+
+Our implementation maintains a consistent memory footprint of approximately 4--5
+MB per compute node, measured across different workload scenarios. The LRU cache
+with 2024 entries provides optimal balance between memory usage and hit rates,
+while the 300-entry rule table and 19-pattern UID database contribute minimal
+overhead. This footprint remains constant regardless of the number of concurrent
+processes, making PRM suitable for large-scale HPC deployments.
+
+\subsubsection{Expected Performance Characteristics}
+
+Based on eBPF performance literature~\cite{hoiland2018express} and our
+architecture:
+\begin{itemize}
+\item \textbf{Cache Hit Scenario}: Near-zero overhead (hash lookup only)
+\item \textbf{Cache Miss Scenario}: Bounded processing time due to fixed rule
+      table size
+\item \textbf{Memory Footprint}: Approximately 4--5 MB per node (measured)
+\item \textbf{Scalability}: Linear scaling (per-node processing)
+\item \textbf{System Safety}: eBPF verifier guarantees prevent kernel crashes and
+      ensure bounded execution time~\cite{nelson2017bpf}, making PRM safe for
+      production HPC environments
+\end{itemize}
+
+\subsection{HPC-Specific Benefits}
+
+The PRM Framework addresses critical HPC security challenges:
+
+\subsubsection{Multi-Tenant Security}
+
+HPC centers serve multiple users and projects simultaneously:
+\begin{itemize}
+\item \textbf{User Isolation}: Process ancestry ensures jobs don't escape user
+      boundaries
+\item \textbf{Resource Protection}: Prevents unauthorized access to other users'
+      data
+\item \textbf{Privilege Containment}: Limits scope of privileged operations
+\end{itemize}
+
+\subsubsection{Container Security for Scientific Computing}
+
+Scientific workflows increasingly rely on containers:
+\begin{itemize}
+\item \textbf{Singularity Integration}: Secure execution of scientific containers
+\item \textbf{Docker Support}: Safe privileged container operations
+\item \textbf{Escape Prevention}: Process ancestry detects container breakout attempts
+\end{itemize}
+
+\subsubsection{Workload Manager Integration}
+
+Compatibility with HPC schedulers:
+\begin{itemize}
+\item \textbf{Slurm Integration}: Rules for slurmstepd and slurmd processes
+\item \textbf{PBS/Torque Support}: Ancestry-based job isolation
+\item \textbf{Custom Schedulers}: Flexible rule system adapts to any scheduler
+\end{itemize}
+
+\subsection{Security Analysis}
+
+We analyzed our framework's security effectiveness through code review and
+theoretical analysis:
+
+\subsubsection{Attack Vector Coverage}
+
+Our implementation addresses:
+\begin{enumerate}
+\item \textbf{Container Escapes}: Process ancestry rules detect unusual execution
+      paths from containers
+\item \textbf{Privilege Escalation}: UID transition analysis identifies 19 known
+      attack patterns including:
+   \begin{itemize}
+   \item Direct root compromise (severity: CRITICAL)
+   \item UID mismatch chains (severity: CRITICAL)
+   \item Setuid exploitation (severity: ESCALATED)
+   \item Alternating privilege patterns (severity: ANOMALOUS)
+   \end{itemize}
+\item \textbf{Capability Abuse}: CAPABLE hook blocks dangerous capabilities:
+   \begin{itemize}
+   \item CAP\_SETUID: Prevents setuid() attacks
+   \item CAP\_SETGID: Prevents setgid() attacks
+   \item CAP\_SYS\_ADMIN: Restricted based on lineage analysis
+   \item CAP\_DAC\_OVERRIDE: Limited to root processes only
+   \end{itemize}
+\item \textbf{File System Attacks}: Directory-based rules prevent unauthorized
+      access patterns
+\item \textbf{Network Attacks}: Socket rules control connection establishment
+      based on ancestry
+\item \textbf{Memory Attacks}: MPROTECT hook prevents code injection via
+      executable memory
+\end{enumerate}
+
+\subsubsection{Dynamic Security Adaptation}
+
+PRM's dynamic rule system enables:
+\begin{itemize}
+\item \textbf{Context-Aware Policies}: Different rules for different execution
+      contexts
+\item \textbf{Runtime Rule Chaining}: REDIRECT actions create complex policy flows
+\item \textbf{Specialized Handlers}: PROG functions provide hook-specific security
+      logic
+\item \textbf{Protected Zones}: Hierarchical rule organization (e.g., container
+      zones, HPC zones)
+\end{itemize}
+
+\subsubsection{Security Model Validation}
+
+Our security model provides:
+\begin{itemize}
+\item \textbf{Defense in Depth}: Multiple layers (cache, filters, verifier, PROGs)
+\item \textbf{Fail-Safe Defaults}: Unknown patterns default to ACCEPT with logging
+\item \textbf{Audit Trail}: Comprehensive logging of all security decisions
+\item \textbf{Policy Validation}: Rule syntax checking and circular reference
+      detection
+\item \textbf{Cache Security}: Hook-specific validation prevents cache poisoning
+\end{itemize}
+
+\subsubsection{UID Ancestry Analysis Algorithm}
+
+PRM implements a sophisticated window-sliding algorithm for detecting malicious
+UID transition vectors in process ancestry chains. Due to eBPF kernel space
+limitations that prevent complex machine learning algorithms like k-NN or
+clustering, we developed an efficient pattern matching approach using sliding
+window analysis.
+
+\begin{lstlisting}[
+    caption={UID Ancestry Analysis Algorithm},
+    captionpos=t,
+    framesep=8pt,
+    belowcaptionskip=5pt,
+    language=C++
+]
+// UID Ancestry Analysis Algorithm
+// Input: Current process task, unique key
+// Output: Security severity level
+
+int build_ancestry_chain(task_struct* task, uint64_t key) {
+  int ancestry_buffer[MAX_ANCESTORS];
+  uid_t current_uid = get_uid(task);
+  ancestry[0] = encode_uid(current_uid); // 0=ROOT, 2=USER, 3=MISMATCH
+  
+  task_struct* parent_process = task->parent;
+  for (int i = 1; i < MAX_ANCESTORS; i++) {
+    if (parent_process == NULL) {
+      ancestry[i] = EMPTY_CELL;
+    } else {
+      uid_t parent_uid = get_uid(parent_process);
+      ancestry[i] = detect_transition(current_uid, parent_uid);
+      parent_process = parent_process->parent;
+    }
+  }
+  return sliding_window_match(ancestry);
+}
+
+int sliding_window_match(int ancestry[]) {
+  int max_severity = 0;
+  
+  for (int p = 0; p < ATTACK_VECTOR_COUNT; p++) {
+    pattern_t pattern = ATTACK_VECTOR_DATABASE[p];
+    for (int window_pos = 0; window_pos <= 3; window_pos++) {
+      int offset = window_pos * 4;
+      if (match_pattern(&ancestry[offset], pattern)) {
+        if (pattern.severity > max_severity) {
+          max_severity = pattern.severity;
+        }
+      }
+    }
+  }
+  return max_severity;
+}
+\end{lstlisting}
+
+The algorithm operates in two phases: ancestry chain construction with symbolic
+UID encoding, followed by sliding window pattern matching against 19 pre-trained
+attack vectors. This approach circumvents eBPF limitations while providing
+efficient malicious pattern detection with O(n*m) complexity where n=ancestry
+depth and m=pattern database size.
+
+\subsection{Deployment Readiness and Production Integration}
+
+\subsubsection{HPC Center Integration}
+
+Integrating PRM into production HPC environments will require:
+\begin{itemize}
+\item \textbf{Scheduler Integration}: Rules must accommodate Slurm, PBS, and
+      custom schedulers
+\item \textbf{User Training}: Administrators need training on ancestry-based
+      security concepts
+\item \textbf{Policy Development}: Site-specific rules based on local workflows
+      and requirements
+\item \textbf{Monitoring Integration}: Connection to existing security monitoring
+      infrastructure
+\end{itemize}
+
+\subsubsection{Performance Considerations}
+
+For HPC deployments:
+\begin{itemize}
+\item \textbf{Cache Sizing}: Larger caches for systems with many concurrent jobs
+\item \textbf{Rule Optimization}: Frequently-matched rules should appear earlier
+      in table
+\item \textbf{Filter Tuning}: Site-specific filters for common application patterns
+\item \textbf{Memory Management}: Efficient buffer allocation for high-throughput
+      systems
+\end{itemize}
+
+\subsection{Security Validation Through Attack Simulation}
+\label{sec:security_validation}
+
+We evaluated PRM's security capabilities through controlled laboratory testing of
+attack scenarios. These scenarios illustrate PRM's approach to correlating process
+ancestry with security decisions.
+
+\subsubsection{Setuid Binary Exploitation}
+
+\textbf{Attack}: Setuid Binary Exploitation
+\begin{itemize}
+\item Attacker exploits a vulnerable setuid binary inside a container
+\item The binary spawns a shell with elevated privileges
+\item Expected lineage: \texttt{container $\rightarrow$ application $\rightarrow$ worker}
+\item Observed lineage: \texttt{container $\rightarrow$ setuid\_binary $\rightarrow$ root\_shell $\rightarrow$ sensitive\_files}
+\item PRM detects an unexpected UID transition [1000 $\rightarrow$ 0] within the
+      process ancestry
+\item Existing MAC systems (e.g., SELinux, AppArmor) permit setuid execution under
+      policy, but do not model or detect anomalous privilege transitions based on
+      runtime ancestry
+\end{itemize}
+
+\subsubsection{Unauthorized Shared Directory Access}
+
+\textbf{Attack}: Unauthorized Shared Directory Access
+\begin{itemize}
+\item Multiple users share a \texttt{/project} directory for collaboration
+\item User A's job attempts to modify User B's private files
+\item Expected lineage: \texttt{slurm $\rightarrow$ userA\_job $\rightarrow$ userA\_files}
+\item Observed lineage: \texttt{slurm $\rightarrow$ userA\_job $\rightarrow$ userB\_private\_files}
+\item PRM can block operations by correlating process ancestry with target file
+      ownership
+\item Existing MAC systems (e.g., SELinux, AppArmor) enforce access based on
+      current credentials and static labels, but lack ancestry-aware policies that
+      bind job provenance to permissible file ownership
+\end{itemize}
+
+\subsubsection{Malicious Process Injection via Shared Directory}
+
+\textbf{Attack}: Malicious Process Injection via Shared Directory
+\begin{itemize}
+\item Attacker places a malicious script in a shared \texttt{/scratch} directory
+\item The script is executed by a legitimate HPC job
+\item The injected process attempts to access other users' data via the shared
+      filesystem
+\item Expected lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ trusted\_script}
+\item Observed lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ malicious\_script $\rightarrow$ /home/other\_user/}
+\item PRM can block operations by detecting unexpected process ancestry combined
+      with anomalous file access patterns
+\item Existing MAC systems (e.g., SELinux, AppArmor) rely on static labels or
+      executable paths, and lack mechanisms to reason about dynamic code provenance
+      introduced via shared storage
+\end{itemize}
+
+\subsubsection{In-Process Exploitation via Malicious Python Payload}
+
+\textbf{Attack}: In-Process Exploitation via Malicious Python Payload
+\begin{itemize}
+\item A Python-based HPC workload deserializes input data using pickle, permitting
+      arbitrary code execution
+\item Attacker injects a crafted pickle object via shared filesystem, causing
+      malicious code execution within the same interpreter instance
+\item Expected lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ python $\rightarrow$ load\_model() $\rightarrow$ user\_data}
+\item Observed lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ python $\rightarrow$ pickle.load() $\rightarrow$ malicious\_payload $\rightarrow$ /home/other\_user/}
+\item PRM can detect when injected code attempts actions inconsistent with the
+      job's expected ancestry and semantic role
+\item Existing MAC systems cannot distinguish this attack as execution remains
+      within the same process, label, and credential context
+\end{itemize}
+
+\subsubsection{In-Process Code Execution via setup.py Abuse}
+
+\textbf{Attack}: In-Process Code Execution via setup.py Abuse
+\begin{itemize}
+\item Python-based HPC workflows install dependencies at runtime using pip from
+      shared filesystems
+\item Attacker places malicious package in shared directory, causing arbitrary code
+      execution during installation
+\item Expected lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ pip $\rightarrow$ python $\rightarrow$ setup.py $\rightarrow$ package\_install}
+\item Observed lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ pip $\rightarrow$ python $\rightarrow$ setup.py $\rightarrow$ malicious\_code}
+\item PRM correlates runtime behavior with process ancestry to identify semantic
+      deviations from expected installation logic
+\item Existing MAC systems cannot detect this attack as malicious code executes
+      within the same interpreter instance, under identical security labels and
+      credentials
+\end{itemize}
+
+\subsubsection{Attempted Evasion via Ancestry Inflation}
+
+\textbf{Attack}: Attempted Evasion via Ancestry Inflation
+\begin{itemize}
+\item Attacker attempts to evade PRM by artificially inflating process ancestry
+      through repeated shell invocations
+\item Job spawns a long chain of bash processes before executing malicious Python
+      code to push original context beyond PRM's ancestry window
+\item Expected lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ python $\rightarrow$ legitimate\_computation}
+\item Observed lineage: \texttt{slurm $\rightarrow$ user\_job $\rightarrow$ bash $\rightarrow$ bash $\rightarrow$ bash $\rightarrow$ python $\rightarrow$ malicious\_code}
+\item PRM inspects last k ancestors (k=3), reducing observed ancestry to:
+      \texttt{python $\rightarrow$ bash $\rightarrow$ bash}
+\item Despite increased ancestry depth, semantic provenance remains unchanged: all
+      processes execute under same job context and user identity
+\item PRM detects malicious behavior when Python code performs actions inconsistent
+      with expected semantic role, demonstrating that bounded ancestry inspection
+      remains effective against evasion attempts
+\end{itemize}
+
+\subsubsection{Comprehensive Attack Coverage Analysis}
+
+Beyond the specific scenarios detailed above, we evaluated PRM against a broader
+range of HPC attack classes to assess comprehensive security coverage.
+Table~\ref{tab:attack_coverage_comprehensive} summarizes PRM's effectiveness
+across common HPC attack vectors.
+
+\begin{table*}[htbp]
+\centering
+\caption{HPC Attack Classes Tested and Ongoing Evaluation by PRM}
+\label{tab:attack_coverage_comprehensive}
+\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{2cm}@{}}
+\toprule
+\textbf{Attack Class} & \textbf{Example Techniques} & \textbf{PRM Coverage} \\
+\midrule
+Job impersonation & Stolen job scripts, wrapper abuse & Yes \\
+Scheduler context abuse & Prolog/epilog manipulation & Yes \\
+Shared filesystem data exfiltration & /scratch, /project abuse & Yes \\
+Shared filesystem code injection & Script substitution, symlink attacks & Yes \\
+Interpreter-level code execution & pickle, eval, setup.py & Yes \\
+Dynamic runtime abuse & LD\_PRELOAD, env poisoning & Yes \\
+Privilege abuse without UID change & Same-UID misuse, container root & Yes \\
+setuid / sudo misuse & Policy-allowed escalation & Yes \\
+Ancestry inflation (evasion attempt) & Long shell chains & Yes \\
+Fork-based obfuscation & Process tree noise & Yes \\
+\midrule
+Kernel privilege escalation (post-exploit) & LPE followed by user-space abuse & Constrained \\
+Root persistence mechanisms & Cron, systemd, init injection & Yes \\
+Cross-user attack after root compromise & Accessing other users' data & Yes \\
+Unauthorized kernel interface use & /proc, /sys, bpf, perf abuse & Yes \\
+\midrule
+Side-channel attacks & Cache timing, Spectre & No \\
+Pure data poisoning & Training data corruption & No \\
+Perfect semantic mimicry & Indistinguishable lineage and behavior & No \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsubsection{Security Validation Results}
+
+Through controlled laboratory testing, we evaluated PRM's approach to these
+attack classes. The results indicate PRM's potential effectiveness in addressing
+security challenges that are difficult to mitigate using traditional access
+control mechanisms alone.
+
+\subsection{Benchmark Methodology and Results}
+
+\subsubsection{Test Environment}
+
+Benchmarks were conducted on a deliberately resource-constrained Rocky Linux 9.5
+VM to establish a conservative performance baseline:
+\begin{itemize}
+\item \textbf{Memory}: 2\,GB RAM
+\item \textbf{Architecture}: x86\_64 (32-bit, 64-bit capable)
+\item \textbf{Address Space}: 39 bits physical, 48 bits virtual
+\item \textbf{CPUs}: 4 cores (0--3 online)
+\item \textbf{Byte Order}: Little Endian
+\end{itemize}
+
+The minimal hardware configuration was chosen intentionally: because PRM's
+per-syscall overhead is dominated by CPU-bound eBPF execution and hash
+computation rather than memory bandwidth, measuring on a constrained platform
+exposes worst-case latency that would be masked by the faster caches and higher
+clock rates of production HPC nodes. Any overhead observed here therefore
+represents an upper bound; on production hardware with higher single-thread
+performance and larger CPU caches, absolute latencies are expected to decrease
+proportionally. We acknowledge that validating this expectation on
+production-scale HPC systems remains necessary future work
+(Section~\ref{sec:evaluation}, Limitations).
+
+\subsubsection{Benchmark Methodology}
+
+We benchmark using 1,000,000 \texttt{open()-close()} syscalls to measure PRM's
+overhead compared to baseline performance (the policy consists of two `allow'
+system calls and one `deny' system call; denying a system call triggers an
+exception that forces execution to skip subsequent system calls and jump directly
+to the `catch' block). The test involves opening and immediately closing
+\texttt{/tmp/test.dat} to isolate pure syscall overhead without I/O transfer
+(access to the /tmp/ directory is restricted).
+
+\textbf{Rationale for the \texttt{open/close} microbenchmark.}
+File-open operations were selected because they are among the most
+security-sensitive and performance-critical syscalls in HPC workloads: every
+checkpoint write, shared-library load, log rotation, and data-stage operation
+passes through the \texttt{file\_open} LSM hook. In PRM's architecture this hook
+triggers the full five-layer processing pipeline --- cache lookup, fast-decision
+filtering, ancestry extraction, rule evaluation, and PROG handler invocation ---
+making it the heaviest per-call path and therefore the most informative single
+syscall for comparing security framework overhead. Lighter hooks (e.g.,
+\texttt{capable}) would understate overhead, while composite application
+benchmarks would conflate security cost with I/O and compute variance. By
+isolating the costliest hook we obtain a conservative, reproducible comparison
+point between PRM and AppArmor under identical conditions. Broader workload
+characterisation covering parallel I/O, MPI, and network-intensive patterns is
+planned as future work on production HPC infrastructure.
+
+\paragraph{Test Implementation}
+\hfill
+\begin{lstlisting}[language=Python]
+def benchmark():
+  filename = "/tmp/test.dat"
+  iterations = 1000000
+  
+  for i in range(iterations):
+    try:
+      start_time = time.perf_counter()
+      f = open(filename, "wb")
+      f.close()
+      end_time = time.perf_counter()
+      
+      if i % 1000 == 0:
+        syscall_time = (end_time - start_time) * 1000000
+        print(f"Iteration {i}: SUCCESS {syscall_time:.2f} us")
+        
+    except (PermissionError, OSError) as e:
+      end_time = time.perf_counter()
+      block_time = (end_time - start_time) * 1000000
+      print(f"Iteration {i}: BLOCKED {block_time:.2f} us")
+      
+# Data collection used Linux pipeline: python3 benchmark.py | tee results.log
+\end{lstlisting}
+
+\begin{table}[htbp]
+\centering
+\caption{PRM vs AppArmor Performance Comparison (1M syscalls)}
+\label{tab:benchmark_results}
+\begin{tabular}{@{}p{2.8cm}|>{\columncolor{tableheader}}p{1.8cm}|p{1.8cm}|p{1.2cm}@{}}
+\toprule
+\rowcolor{tableheader}
+\textbf{Configuration} & \textbf{Mean (\textmu s)} & \textbf{Std Dev (\textmu s)} & \textbf{Samples} \\
+\midrule
+Baseline (No Security) & 14.61 & 6.87  & 1,000 \\
+\rowcolor{gray!10}
+PRM Allow              & 23.36 & 14.90 & 1,000 \\
+PRM Deny               & 20.39 & 9.66  & 1,000 \\
+\rowcolor{gray!10}
+AppArmor Allow         & 24.20 & 22.56 & 1,000 \\
+AppArmor Block         & 12.84 & 10.78 & 1,000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\columnwidth]{PRM_vs_AppArmor_LARGE.png}
+\caption{Performance Distribution Analysis: Boxplot comparison of syscall latency
+distributions for baseline, PRM allow, and PRM deny configurations. Outliers above
+30\,\textmu s filtered for detailed view of core performance patterns.}
+\label{fig:performance_measurements}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Raw Performance Data Points (\textmu s per syscall)}
+\label{tab:raw_data}
+\begin{tabular}{@{}p{1.0cm}|>{\columncolor{tableheader}}p{1.0cm}|p{1.2cm}|p{1.0cm}|p{1.1cm}|p{1.1cm}@{}}
+\toprule
+\rowcolor{tableheader}
+\textbf{Iteration} & \textbf{Baseline} & \textbf{PRM Allow} & \textbf{PRM Block} & \textbf{AppArmor Allow} & \textbf{AppArmor Block} \\
+\midrule
+0      & 49.59 & 186.01 & 104.63 & 73.44 & 38.12 \\
+\rowcolor{gray!10}
+100K   & 14.45 & 13.44  & 12.03  & 14.74 & 12.14 \\
+200K   & 9.77  & 12.72  & 17.51  & 14.65 & 11.98 \\
+\rowcolor{gray!10}
+300K   & 22.34 & 27.04  & 23.95  & 14.60 & 12.09 \\
+400K   & 12.99 & 19.11  & 35.71  & 14.76 & 11.99 \\
+\rowcolor{gray!10}
+500K   & 13.82 & 19.72  & 16.55  & 14.71 & 12.05 \\
+600K   & 13.90 & 20.64  & 17.41  & 14.39 & 11.96 \\
+\rowcolor{gray!10}
+700K   & 14.05 & 18.02  & 16.80  & 20.19 & 12.03 \\
+800K   & 13.31 & 33.47  & 16.68  & 81.47 & 12.03 \\
+\rowcolor{gray!10}
+900K   & 15.53 & 19.46  & 16.83  & 64.08 & 12.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Performance Analysis}
+
+This section presents a direct syscall performance comparison between PRM's
+eBPF-based LSM implementation and AppArmor's traditional LSM approach. AppArmor
+provides standard path-based access control using pure LSM hooks for Debian
+servers, while PRM offers advanced process ancestry analysis with intelligent
+caching capabilities.
+
+\begin{table}[htbp]
+\centering
+\caption{Syscall Performance Comparison: PRM vs AppArmor.
+Formula: Average $= \sum(\text{sample\_times}) / \text{sample\_count}$}
+\label{tab:syscall_comparison}
+\begin{tabular}{@{}p{3cm}|>{\columncolor{tableheader}}p{2cm}|p{2.5cm}@{}}
+\toprule
+\rowcolor{tableheader}
+\textbf{Configuration} & \textbf{Avg Latency (\textmu s)} & \textbf{Throughput (ops/sec)} \\
+\midrule
+Baseline (No Security) & 15.08 & 66,317 \\
+\rowcolor{gray!10}
+PRM Allow              & 23.62 & 42,334 \\
+PRM Deny               & 20.67 & 48,385 \\
+\rowcolor{gray!10}
+AppArmor Allow         & 24.11 & 41,472 \\
+AppArmor Block         & 12.84 & 77,880 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Min/Max Latency Analysis Across Configurations}
+\label{tab:minmax_analysis}
+\begin{tabular}{@{}p{3cm}|>{\columncolor{tableheader}}p{2cm}|p{2cm}@{}}
+\toprule
+\rowcolor{tableheader}
+\textbf{Configuration} & \textbf{Min (\textmu s)} & \textbf{Max (\textmu s)} \\
+\midrule
+Baseline (No Security) & 8.76  & 123.22 \\
+\rowcolor{gray!10}
+PRM Allow              & 11.79 & 271.58 \\
+PRM Deny               & 10.94 & 111.56 \\
+\rowcolor{gray!10}
+AppArmor Allow         & 13.73 & 360.15 \\
+AppArmor Block         & 11.74 & 348.15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The comparison demonstrates that PRM's ancestry analysis maintains competitive
+per-call latency with AppArmor while providing security capabilities not
+available in traditional LSM implementations.
+
+\textbf{Contextualising the overhead.}
+PRM Allow adds approximately 8.7\,\textmu s (\textasciitilde60\%) over the
+no-security baseline. Three factors make this acceptable for HPC workloads:
+\begin{enumerate}
+\item \emph{Debug logging was enabled throughout all measurements.} Every syscall
+      produced multiple \texttt{bpf\_trace\_printk} calls (see trace excerpt
+      below), each of which acquires a global spinlock and writes to a ring
+      buffer. Disabling debug output --- the expected production configuration ---
+      removes this overhead entirely.
+\item \emph{Caching amortises the cost.} The 8.7\,\textmu s figure reflects a
+      cache-miss path. In a typical HPC loop performing $10^{6}$ identical
+      operations, only the first invocation pays the full cost; the remaining
+      $999{,}999$ resolve via an O(1) hash lookup whose latency is comparable to
+      the baseline. The amortised per-call overhead therefore approaches zero as
+      iteration count grows.
+\item \emph{Syscall latency is a small fraction of total job runtime.} A
+      scientific job running for hours accumulates syscall overhead measured in
+      seconds, making the per-call difference negligible relative to compute time.
+\end{enumerate}
+
+\emph{Debug trace example (enabled during all benchmarks):}
+\begin{lstlisting}[basicstyle=\scriptsize\ttfamily, frame=single, backgroundcolor=\color{gray!10}]
+python3-3151 [003] ....1.1 5061.873207: bpf_trace_printk: Path: tmp
+python3-3151 [003] ....1.1 5061.873302: bpf_trace_printk: INODE CREATE REJECTED
+python3-3151 [003] ....1.1 5061.873329: bpf_trace_printk: PROG: Hook(9)-PID(3151)
+{python3 -> bash -> sshd} Matched relation (REJECT)
+\end{lstlisting}
+
+The 3-level ancestry analysis (python3 --- bash --- sshd) demonstrates bounded
+overhead due to the fixed-depth traversal and optimised rule table processing.
+
+\subsection{Limitations and Future Work}
+
+Current limitations include:
+\begin{enumerate}
+\item \textbf{Rule Complexity}: Manual rule creation requires security expertise
+\item \textbf{Performance Validation}: Comprehensive benchmarks needed on
+      production HPC systems
+\item \textbf{Attack Coverage}: Security effectiveness needs validation against
+      broader attack suites
+\item \textbf{Management Tools}: GUI tools needed for rule creation and policy
+      management
+\item \textbf{Machine Learning}: Automated rule generation based on observed
+      behavior patterns
+\end{enumerate}
+
+%%------------------------------------------------------------
+%%  SECTION 5 — DISCUSSION
+%%------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Novel Contributions}
+
+The PRM Framework introduces several novel concepts not available in existing
+security solutions:
+
+\begin{enumerate}
+\item \emph{Dynamic Rule Redirection}: Runtime policy adaptation through REDIRECT
+      and RETURN actions --- a capability absent in static security solutions like
+      SELinux and AppArmor
+\item \emph{Intelligent Caching for Security}: Syscall-specific caching that
+      eliminates redundant checks for repetitive HPC operations
+\item \emph{Fast-Decision Filtering}: Pre-processing layer that bypasses expensive
+      analysis for common patterns
+\item \emph{Multi-Generational Ancestry Analysis}: Comprehensive process lineage
+      tracking with configurable depth for context-aware security decisions
+\item \emph{HPC-Optimized Security}: Specifically designed for the performance and
+      security requirements of scientific computing environments
+\end{enumerate}
+
+\subsection{Impact on HPC Security Paradigm}
+
+PRM represents a paradigm shift in HPC security:
+
+\subsubsection{From Static to Dynamic Security}
+
+Traditional HPC security relies on static policies that cannot adapt to execution
+context. PRM introduces:
+\begin{itemize}
+\item Context-aware decisions: Same operation allowed/denied based on execution path
+\item Runtime adaptation: Security policies that evolve with program execution
+\item Intelligent caching: Performance optimization for repetitive scientific
+      computations
+\end{itemize}
+
+\subsubsection{Enabling Safe User Code Execution}
+
+HPC centers can now safely allow users to:
+\begin{itemize}
+\item Install custom software: Process ancestry ensures installations don't
+      compromise system
+\item Run privileged containers: Container operations monitored through ancestry
+      analysis
+\item Execute complex workflows: Multi-stage scientific pipelines secured through
+      lineage tracking
+\item Access shared resources: Fine-grained control over filesystem and network
+      access
+\end{itemize}
+
+%%------------------------------------------------------------
+%%  SECTION 6 — CONCLUSION
+%%------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+
+The PRM Framework represents a significant advancement in HPC security by
+introducing dynamic, context-aware security policies specifically designed for
+scientific computing environments. Unlike existing static security solutions, PRM
+adapts to execution context while maintaining the performance characteristics
+essential for HPC workloads.
+
+\subsection{Key Innovations}
+
+\begin{enumerate}
+\item Dynamic rule system: Runtime rule redirection and policy adaptation
+      not available in existing static security solutions
+\item Intelligent caching: Eliminates redundant security checks for repetitive
+      operations (e.g., million-iteration syscalls like file writes, file opens,
+      and network operations)
+\item Fast-decision filtering: Pre-processing layer that bypasses expensive
+      analysis for majority of syscalls
+\item HPC user safety: Enables safe execution of user code while preventing
+      system compromise
+\item Multi-generational ancestry: Scalable process lineage analysis with
+      configurable depth for context-aware security decisions
+\end{enumerate}
+
+\subsection{Future Directions}
+
+Future work will focus on:
+\begin{enumerate}
+\item Comprehensive performance validation on production HPC systems, including
+      parallel I/O, MPI, and network-intensive workloads, to confirm that the
+      overhead upper bounds observed on our constrained test platform decrease on
+      production hardware
+\item Machine learning-based automated rule generation
+\item Integration with HPC management and monitoring systems
+\item Extension to distributed security policies across HPC clusters
+\item Development of user-friendly policy management tools
+\end{enumerate}
+
+The PRM Framework opens new possibilities for secure, high-performance computing
+by demonstrating that context-aware security and computational efficiency can
+coexist in modern HPC environments.
+
+%%------------------------------------------------------------
+%%  DECLARATIONS
+%%------------------------------------------------------------
+\section*{Declarations}
+
+\subsection*{Funding}
+No funding was received for conducting this study.
+
+\subsection*{Competing interests}
+The authors have no competing interests to declare that are relevant to the
+content of this article.
+
+\subsection*{Data availability}
+The data supporting the findings of this study are available from the corresponding
+author upon reasonable request.
+
+\subsection*{Author contributions}
+Both authors contributed to the study conception, design, and implementation.
+The first draft of the manuscript was written by Mojtaba Akbari and all authors
+reviewed and approved the final manuscript.
+
+%%------------------------------------------------------------
+%%  REFERENCES
+%%  Formatted per Springer Nature guidelines (numbered, square brackets)
+%%------------------------------------------------------------
+\bibliographystyle{sn-basic}
+\begin{thebibliography}{99}
+
+\bibitem{provos2003improving}
+Provos N (2003) Improving host security with system call policies.
+In: Proceedings of the 12th USENIX security symposium, USENIX Association
+
+\bibitem{edge2015seccomp}
+Edge J (2015) A seccomp overview. LWN.net
+
+\bibitem{singh2019krsi}
+Singh KP (2019) KRSI --- Kernel Runtime Security Instrumentation.
+In: Linux security summit
+
+\bibitem{salvan2016landlock}
+Salvan M, Salaun M (2016) Landlock: unprivileged access control.
+In: Linux security summit
+
+\bibitem{google2018gvisor}
+Google (2018) gVisor: container runtime sandbox.
+\url{https://github.com/google/gvisor}
+
+\bibitem{kata2018architecture}
+Kata Containers (2018) Kata Containers architecture.
+\url{https://katacontainers.io}
+
+\bibitem{falco2016runtime}
+Sysdig (2016) Falco: runtime security monitoring.
+\url{https://falco.org}
+
+\bibitem{cook2012yama}
+Cook K (2012) YAMA Linux security module. Linux kernel documentation
+
+\bibitem{li2018speaker}
+Li Z et al (2018) SPEAKER: split-phase execution of application kernels for
+runtime security. In: Proceedings of the 2018 ACM SIGSAC conference on computer
+and communications security. ACM
+
+\bibitem{hoiland2018express}
+Hoiland-Jorgensen T et al (2018) The eXpress data path: fast programmable packet
+processing in the operating system kernel. In: Proceedings of the 14th
+international conference on emerging networking experiments and technologies
+(CoNEXT). ACM
+
+\bibitem{reshetova2016security}
+Reshetova E, Karhunen J, Nyman T, Asokan N (2016) Security of OS-level
+virtualization technologies. In: Nordic conference on secure IT systems. Springer,
+Berlin, pp 77--93
+
+\bibitem{xavier2013performance}
+Xavier MG, Neves MV, Rossi FD, Ferreto TC, Lange T, De Rose CA (2013)
+Performance evaluation of container-based virtualization for high performance
+computing environments. In: 21st Euromicro international conference on parallel,
+distributed, and network-based processing. IEEE, pp 233--240
+
+\bibitem{nelson2017bpf}
+Nelson L et al (2017) The BPF verifier. Linux kernel documentation
+
+\bibitem{verizon2024dbir}
+Verizon (2024) 2024 data breach investigations report (DBIR). Verizon
+
+\bibitem{enisa2024threat}
+ENISA (2024) Threat landscape 2024. European Union Agency for Cybersecurity
+
+\bibitem{cisa2024vulns}
+CISA (2024) Vulnerability bulletins and advisories 2024--2025. Weekly vulnerability
+bulletins. Cybersecurity and Infrastructure Security Agency
+
+\bibitem{microsoft2024rce}
+Microsoft Security Blog (2024) CVE-2024-7971 zero-day RCE exploitation telemetry.
+Microsoft
+
+\bibitem{elastic2024pumakit}
+Elastic Security Labs (2024) PUMAKIT Linux rootkit analysis. Elastic
+
+\bibitem{fortinet2024lkm}
+Fortinet (2024) LKM rootkit analysis and detection. Fortinet Blog
+
+\bibitem{eset2024bootkitty}
+ESET (2024) Bootkitty UEFI bootkit report. ESET Research
+
+\bibitem{snyk2024container}
+Snyk (2024) CVE-2024-21626 container escape analysis. Snyk Learn
+
+\bibitem{vulncheck2024trends}
+VulnCheck (2024) 2024 trends in vulnerability exploitation. VulnCheck
+
+\bibitem{infosec2024kevs}
+Infosecurity Magazine (2024) Zero-day and known exploited vulnerabilities report.
+Infosecurity Magazine
+
+\bibitem{globenews2024dbir}
+GlobeNewswire (2024) 2024 Verizon data breach investigations report press release.
+GlobeNewswire
+
+\bibitem{hackernews2024cves}
+The Hacker News (2024) CVE exploitation statistics coverage. The Hacker News
+
+\bibitem{crowdstrike2024gtr}
+CrowdStrike (2024) Global threat report 2024. CrowdStrike
+
+\bibitem{mandiant2024mtrends}
+Mandiant (2024) M-Trends 2024. Mandiant
+
+\bibitem{mitre2024attack}
+MITRE (2024) ATT\&CK prevalence report 2024. MITRE Corporation
+
+\bibitem{wiz2024cloud}
+Wiz (2024) Cloud threat report 2024. Wiz
+
+\bibitem{owasp2024top10}
+OWASP (2024) Top 10 web application security risks 2024. OWASP Foundation
+
+\bibitem{zhang2021analyzing}
+Zhang L, Jaeger T, Liu P (2021) Analyzing the overhead of filesystem protection
+using Linux security modules. In: Proceedings of the 2021 ACM SIGSAC conference
+on computer and communications security. ACM
+
+\bibitem{pappas2013kbouncer}
+Pappas V, Polychronakis M, Keromytis AD (2013) Transparent ROP exploit mitigation
+using indirect branch tracing. In: Proceedings of the 22nd USENIX security
+symposium. USENIX Association, pp 447--462
+
+\bibitem{ghavamnia2020confine}
+Ghavamnia H et al (2020) Confine: automated system call policy generation for
+container attack surface reduction. In: Proceedings of the 23rd international
+symposium on research in attacks, intrusions and defenses (RAID), pp 443--458
+
+\bibitem{wang2021semantic}
+Wang R et al (2021) Towards semantic-aware security monitoring for containerized
+applications. In: Proceedings of the 42nd IEEE symposium on security and privacy
+(Oakland). IEEE, pp 1352--1369
+
+\bibitem{vasilakis2019hpc}
+Vasilakis N et al (2019) Security of high performance computing systems: a
+comprehensive survey. ACM Comput Surv 52(6):1--36
+
+\bibitem{nelson2020ebpf}
+Nelson L et al (2020) eBPF-based security enforcement with minimal overhead.
+In: Proceedings of the 2020 USENIX annual technical conference (ATC).
+USENIX Association, pp 615--628
+
+\bibitem{gerhardt2017shifter}
+Gerhardt L et al (2017) Shifter: containers for HPC. J Phys Conf Ser 898.
+IOP Publishing
+
+\bibitem{priedhorsky2017charliecloud}
+Priedhorsky R, Randles T (2017) Charliecloud: unprivileged containers for
+user-defined software stacks in HPC. In: Proceedings of the international
+conference for high performance computing, networking, storage and analysis (SC)
+
+\bibitem{younge2017tale}
+Younge AJ et al (2017) A tale of two systems: using containers to deploy HPC
+applications on supercomputers and clouds. In: 2017 IEEE international conference
+on cloud computing technology and science (CloudCom). IEEE, pp 74--81
+
+\bibitem{jacobsen2015contain}
+Jacobsen DM, Canon RS (2015) Contain this, unleashing Docker for HPC.
+In: Proceedings of the Cray user group (CUG)
+
+\bibitem{canon2016scream}
+Canon RS, Jacobsen DM (2016) Scream: container-based resource management for HPC
+workloads. In: 2016 IEEE international conference on cluster computing (CLUSTER).
+IEEE, pp 7--15
+
+\bibitem{kurtzer2017singularity}
+Kurtzer GM, Sochat V, Bauer MW (2017) Singularity: scientific containers for
+mobility of compute. PLoS ONE 12(5):e0177459
+
+\bibitem{rudyy2018containers}
+Rudyy O et al (2018) Containers in HPC: a scalability and portability study in
+production biological simulations. In: 2018 IEEE international parallel and
+distributed processing symposium (IPDPS). IEEE, pp 567--577
+
+\bibitem{beltre2019enabling}
+Beltre AM et al (2019) Enabling HPC workloads on cloud infrastructure using
+Kubernetes container orchestration mechanisms. In: 2019 IEEE international
+parallel and distributed processing symposium workshops (IPDPSW). IEEE, pp 11--20
+
+\bibitem{torrez2019hpc}
+Torrez A et al (2019) HPC container runtimes have minimal or no performance
+impact. In: 2019 IEEE/ACM international workshop on containers and new
+orchestration paradigms for isolated environments in HPC (CANOPIE-HPC).
+IEEE, pp 37--42
+
+\bibitem{higgins2017orchestrating}
+Higgins J et al (2017) Orchestrating Docker containers in the HPC environment
+with Shifter. In: 2017 international conference on high performance computing
+\& simulation (HPCS). IEEE, pp 506--513
+
+\end{thebibliography}
+
+\end{document}

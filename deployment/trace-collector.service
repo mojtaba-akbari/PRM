@@ -1,0 +1,12 @@
+[Unit]
+Description=Kernel Trace Collector
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/trace-collector
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

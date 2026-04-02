@@ -91,17 +91,26 @@ static __u32 denyWriteOutSideOfValidDirectories_prog(struct hooks_context_t *hoo
 
     char *dname;
     struct dentry *parent;
+    struct dentry *first_after_root = NULL;
     struct dentry *prev = cur;
     
-    for (int i = 0; i < MAX_DIR_ITR && cur; i++) {
+    for (int i = 0; i < MIN_ITR && cur; i++) {
         parent = BPF_CORE_READ(cur, d_parent);
-        if (!parent || cur == parent) break;
+        if (!parent || cur == parent) {
+            first_after_root = prev;
+            break;
+        }
         prev = cur;
         cur = parent;
     }
     
-    if (!prev) prev = cur;
-    dname = BPF_CORE_READ(prev, d_name.name);
+    if (!first_after_root) {
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INODE CREATE: Path too deep (>MIN_ITR), REJECTED"));
+        char_memory_delete(&path_key);
+        RET_REJECT
+    }
+    
+    dname = BPF_CORE_READ(first_after_root, d_name.name);
     bpf_core_read_str(path_buf->_buff_, MAX_STR, dname);
     
     FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Path: %s", path_buf->_buff_));
@@ -130,17 +139,22 @@ static __u32 denyWriteOutSideOfValidDirectories_fingerprint(struct hooks_context
 
     char *dname;
     struct dentry *parent;
+    struct dentry *first_after_root = NULL;
     struct dentry *prev = cur;
     
-    for (int i = 0; i < MAX_DIR_ITR && cur; i++) {
+    for (int i = 0; i < MIN_ITR && cur; i++) {
         parent = BPF_CORE_READ(cur, d_parent);
-        if (!parent || cur == parent) break;
+        if (!parent || cur == parent) {
+            first_after_root = prev;
+            break;
+        }
         prev = cur;
         cur = parent;
     }
     
-    if (!prev) prev = cur;
-    dname = BPF_CORE_READ(prev, d_name.name);
+    if (!first_after_root) RET_REJECT
+    
+    dname = BPF_CORE_READ(first_after_root, d_name.name);
     bpf_core_read_str(path_buf->_buff_, MAX_STR, dname);
     
     bpf_printk("Path: %s", path_buf->_buff_);
@@ -166,6 +180,30 @@ static __u32 denyMakeSocketToEndHost_prog(struct hooks_context_t *hook_ctx){
 
     checkValidElemConfigNUMBER(family, SocketProtocolInvalid, RET_REJECT)
 
+    // IPv6 whitelist: ::1, fc00::/7, fe80::/10
+    if (family == 10) {
+        struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)address;
+        struct in6_addr ip6;
+        BPF_CORE_READ_INTO(&ip6, addr6, sin6_addr);
+        
+        // ::1 (localhost)
+        if (ip6.in6_u.u6_addr32[0] == 0 && ip6.in6_u.u6_addr32[1] == 0 && 
+            ip6.in6_u.u6_addr32[2] == 0 && ip6.in6_u.u6_addr32[3] == 0x01000000) {
+            RET_ACCEPT
+        }
+        // fc00::/7 (ULA private)
+        if ((ip6.in6_u.u6_addr8[0] & 0xFE) == 0xFC) {
+            RET_ACCEPT
+        }
+        // fe80::/10 (link-local)
+        if ((ip6.in6_u.u6_addr8[0] == 0xFE) && ((ip6.in6_u.u6_addr8[1] & 0xC0) == 0x80)) {
+            RET_ACCEPT
+        }
+        
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("IPv6 blocked"));
+        RET_REJECT
+    }
+
     // Implement Me more // Mojtaba
     if (family == AF_INET) {
         dest_ip = BPF_CORE_READ((struct sockaddr_in *)address, sin_addr.s_addr);
@@ -174,14 +212,20 @@ static __u32 denyMakeSocketToEndHost_prog(struct hooks_context_t *hook_ctx){
         dest_port = (dest_port >> 8) | (dest_port<<8);
         
         bpf_printk("IP: %pI4, Port: %d", &dest_ip, dest_port);
-        int len=sizeof(IPDestRules._holder_) / sizeof(IPDestRules._holder_[0]);
-        for(int i=0;i<len;i++)
-        {
-            if (ip_in_subnet(dest_ip, dest_port, IPDestRules._holder_[i])) {
-                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Socket connection rejected!!! due to be matched with Rules"));
-                RET_REJECT
-            }   
+        
+        // Whitelist: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+        __u32 ip_host = to_network_order(dest_ip);
+        if ((ip_host & 0xFF000000) == 0x7F000000 ||  // 127.x.x.x
+            (ip_host & 0xFF000000) == 0x0A000000 ||  // 10.x.x.x
+            (ip_host & 0xFFF00000) == 0xAC100000 ||  // 172.16-31.x.x
+            (ip_host & 0xFFFF0000) == 0xC0A80000) {  // 192.168.x.x
+            FLAG_FOR_HASH(hook_ctx, dest_ip, dest_port, family)
+            RET_ACCEPT
         }
+        
+        // Block everything else
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Socket connection rejected - not in whitelist"));
+        RET_REJECT
     }
 
     FLAG_FOR_HASH(hook_ctx, dest_ip, dest_port, family)
@@ -550,37 +594,130 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
         RET_REJECT
     }
 
+    __u64 sb_name_key = generate_tmp_ukey(hook_ctx->key.pid, hook_ctx->key.tpid) + 573;
+    struct empty_buffer *sb_name_buf = char_memory_allocate(&sb_name_key, NULL);
+    if (!sb_name_buf) {
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        RET_REJECT
+    }
+
+    __u64 fs_type_key = generate_tmp_ukey(hook_ctx->key.pid, hook_ctx->key.tpid) + 574;
+    struct empty_buffer *fs_type_buf = char_memory_allocate(&fs_type_key, NULL);
+    if (!fs_type_buf) {
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_REJECT
+    }
+
+    bool is_kernel_fs=false;
+    get_filesystem_info(file,sb_name_buf->_buff_,&is_kernel_fs,fs_type_buf->_buff_);
+
+    bpf_printk("File Type : %s %s",sb_name_buf->_buff_,fs_type_buf->_buff_);
+
     struct dentry *cur = de;
     struct dentry *parent;
+    struct dentry *first_after_root = NULL;
     struct dentry *prev = cur;
-    
-    for (int i = 0; i < MAX_DIR_ITR && cur; i++) {
+
+    for (int i = 0; i < MIN_ITR && cur; i++) {
         parent = BPF_CORE_READ(cur, d_parent);
-        if (!parent || cur == parent) break;
+        if (!parent || cur == parent) {
+            first_after_root = prev;
+            break;
+        }
         prev = cur;
         cur = parent;
     }
     
-    // prev now contains the first directory after root
-    if (prev) {
-        const char *dir_name = BPF_CORE_READ(prev, d_name.name);
-        if (dir_name) {
-            bpf_core_read_str(full_path_buf->_buff_, MAX_STR, dir_name);
-        }
+    if (!first_after_root) {
+        bpf_printk("FILE_OPEN: Path too deep (>MIN_ITR), REJECTED");
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_REJECT
+    }
+    
+    const char *dir_name = BPF_CORE_READ(first_after_root, d_name.name);
+    if (dir_name) {
+        bpf_core_read_str(full_path_buf->_buff_, MAX_STR, dir_name);
     }
 
-    bool resCondition1=0;
-    checkValidElemConfigForceSTRLen(full_path_buf->_buff_, OpenFileDirectoryDeny, resCondition1=1;)
 
+    unsigned int f_flags = BPF_CORE_READ(file, f_flags);
+    bool is_write = (f_flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND));
+    
+    bpf_printk("FILE_OPEN: file=%s, dir=%s, is_write=%d", module_name_buf->_buff_, full_path_buf->_buff_, is_write);
+    
+    bool is_system_dir = false;
+    bool is_aggresive = false;
+    checkValidElemConfigSTR(full_path_buf->_buff_, BinaryHomeDirectory, is_system_dir=true;)
+    
+    // Mojjjaaak Please develop me more , i know you are tied up but this line is really fcking stupid one , develope me 
+    checkValidElemConfigSTR(sb_name_buf->_buff_, BinaryHomeDirectory, is_system_dir=true;)
+    // For god , JK will hit me if i develop you , stay here and hold on 
+    
+    bpf_printk("FILE_OPEN: is_system_dir=%d", is_system_dir);
+    
+    // Check Aggresive before let them pass through ---> Mojjjak , it is a little bit difficult because the system highly is being restricted //
+    checkValidElemConfigSTR(module_name_buf->_buff_, OpenFileDenyAggressivly, is_aggresive=true;)
+    if(is_aggresive && is_system_dir)
+    {
+        bpf_printk("FILE_OPEN: FORCE SHUT-DOWN OPENING");
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_REJECT
+    }
+
+    // I have a bug here !!!!!!!!!!!!!!!!!!!!!!!! fix this mojjjak , i have to be un-readable even for some sb !
+    if (is_system_dir && !is_write) {
+        bpf_printk("FILE_OPEN: ALLOWED system read");
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_ACCEPT
+    }
+    
+    // Block ALL data file access (read/write) outside ValidateDirectory
+    bool access_allowed = false;
+    checkValidElemConfigSTR(full_path_buf->_buff_, ValidateDirectory, access_allowed=true;)
+    
+    bpf_printk("FILE_OPEN: access_allowed=%d", access_allowed);
+    
+    if (!access_allowed) {
+        bpf_printk("FILE_OPEN: REJECTED - not in ValidateDirectory");
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_REJECT
+    }
+
+    // Block dangerous file extensions
     bool resCondition2=0;
     checkValidElemConfigForceSTRLen(module_name_buf->_buff_, OpenFileDeny, resCondition2=1;)
-
-    if(resCondition2) RET_REJECT
+    if(resCondition2) {
+        bpf_printk("FILE_OPEN EXTENSION: REJECTED - No Valid File");
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_REJECT
+    }
     
-    FLAG_FOR_HASH(hook_ctx, str_to_u32(module_name_buf->_buff_), str_to_u32(full_path_buf->_buff_), 0)
+    FLAG_FOR_HASH(hook_ctx, str_to_u32(module_name_buf->_buff_), str_to_u32(full_path_buf->_buff_), is_write)
 
     char_memory_delete(&path_key);
     char_memory_delete(&module_key);
+    char_memory_delete(&sb_name_key);
+    char_memory_delete(&fs_type_key);
 
     RET_ACCEPT
 }
@@ -611,30 +748,59 @@ static __u32 denyFileOpen_fingerprint(struct hooks_context_t *hook_ctx){
         RET_ACCEPT
     }
 
+        __u64 sb_name_key = generate_tmp_ukey(hook_ctx->key.pid, hook_ctx->key.tpid) + 573;
+    struct empty_buffer *sb_name_buf = char_memory_allocate(&sb_name_key, NULL);
+    if (!sb_name_buf) {
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        RET_REJECT
+    }
+
+    __u64 fs_type_key = generate_tmp_ukey(hook_ctx->key.pid, hook_ctx->key.tpid) + 574;
+    struct empty_buffer *fs_type_buf = char_memory_allocate(&fs_type_key, NULL);
+    if (!fs_type_buf) {
+        char_memory_delete(&path_key);
+        char_memory_delete(&module_key);
+        char_memory_delete(&sb_name_key);
+        char_memory_delete(&fs_type_key);
+        RET_REJECT
+    }
+
+    bool is_kernel_fs=false;
+    get_filesystem_info(file,sb_name_buf->_buff_,&is_kernel_fs,fs_type_buf->_buff_);
+
     // Get first directory after root (same logic as prog)
     struct dentry *cur = de;
     struct dentry *parent;
+    struct dentry *first_after_root = NULL;
     struct dentry *prev = cur;
     
-    for (int i = 0; i < MAX_DIR_ITR && cur; i++) {
+    // Single loop: max 50 depth
+    for (int i = 0; i < MIN_ITR && cur; i++) {
         parent = BPF_CORE_READ(cur, d_parent);
-        if (!parent || cur == parent) break;
+        if (!parent || cur == parent) {
+            first_after_root = prev;
+            break;
+        }
         prev = cur;
         cur = parent;
     }
     
-    if (prev) {
-        const char *dir_name = BPF_CORE_READ(prev, d_name.name);
-        if (dir_name) {
-            bpf_core_read_str(full_path_buf->_buff_, MAX_STR, dir_name);
-        }
+    if (!first_after_root) RET_REJECT
+    
+    const char *dir_name = BPF_CORE_READ(first_after_root, d_name.name);
+    if (dir_name) {
+        bpf_core_read_str(full_path_buf->_buff_, MAX_STR, dir_name);
     }
 
     
-    FLAG_FOR_HASH(hook_ctx, str_to_u32(module_name_buf->_buff_), str_to_u32(full_path_buf->_buff_), 0)
+    FLAG_FOR_HASH(hook_ctx, str_to_u32(module_name_buf->_buff_), str_to_u32(full_path_buf->_buff_), str_to_u32(sb_name_buf->_buff_))
 
     char_memory_delete(&module_key);
     char_memory_delete(&path_key);
+    char_memory_delete(&sb_name_key);
+    char_memory_delete(&fs_type_key);
 
     RET_ACCEPT
 }
@@ -771,36 +937,54 @@ static __u32 taskFixSetUIDCheck_prog(struct hooks_context_t *hook_ctx){
     
     kuid_t old_uid = BPF_CORE_READ(old_cred, uid);
     kuid_t new_uid = BPF_CORE_READ(new_cred, uid);
+    kuid_t old_euid = BPF_CORE_READ(old_cred, euid);
+    kuid_t new_euid = BPF_CORE_READ(new_cred, euid);
     kgid_t old_gid = BPF_CORE_READ(old_cred, gid);
     kgid_t new_gid = BPF_CORE_READ(new_cred, gid);
     
-    bpf_printk("TASK_FIX_SETUID: UID %d->%d, GID %d->%d, flags=%d", old_uid.val, new_uid.val, old_gid.val, new_gid.val, flags);
+    bpf_printk("TASK_FIX_SETUID: UID %d->%d, EUID %d->%d, GID %d->%d, flags=%d", old_uid.val, new_uid.val, old_euid.val, new_euid.val, old_gid.val, new_gid.val, flags);
     
-    // CRITICAL: Block any escalation to root (UID 0)
+    // Block effective UID escalation to root (catches setuid binaries)
+    if (new_euid.val == 0 && old_euid.val != 0 && old_uid.val != 0) {
+        // Allow if it's a legitimate setuid binary from system paths
+        struct execPath *ePath = getExecPath(task, createTaskUKey(task, &hook_ctx->taskUKey));
+        if (ePath) {
+            bpf_printk("ExecPath found, isValidDirectory=%d", ePath->isValidDirectory);
+            if (ePath->isValidDirectory == 1) {
+                bpf_printk("ALLOWED: setuid binary from valid directory");
+                RET_ACCEPT
+            }
+        } else {
+            bpf_printk("ExecPath is NULL");
+        }
+        bpf_printk("EXPLOIT BLOCKED: seteuid(0) escalation from EUID %d", old_euid.val);
+        RET_REJECT
+    }
+
+    // Block real UID escalation to root
     if (new_uid.val == 0 && old_uid.val != 0) {
         bpf_printk("EXPLOIT BLOCKED: setuid(0) escalation from UID %d", old_uid.val);
         RET_REJECT
     }
     
-    // Block escalation to root group (GID 0)
+    // Block GID escalation to root
     if (new_gid.val == 0 && old_gid.val != 0) {
         bpf_printk("EXPLOIT BLOCKED: setgid(0) escalation from GID %d", old_gid.val);
         RET_REJECT
     }
     
-    // Deep lineage analysis for suspicious patterns
+    // UID lineage analysis
     int lineage_result = BASE;
     if (hook_ctx->key.pid != 0) {
         lineage_result = lineageUIDAnalizer(hook_ctx->task, &hook_ctx->key);
     }
     
-    // Block high-risk lineage patterns
     if (lineage_result > LOW_RISK) {
         bpf_printk("EXPLOIT BLOCKED: Suspicious UID lineage pattern %d", lineage_result);
         RET_REJECT
     }
     
-    // Check for containerized root attempts
+    // Container escape detection
     if (new_uid.val == 0 && is_containerized_root(task)) {
         bpf_printk("EXPLOIT BLOCKED: Container escape attempt to root");
         RET_REJECT
@@ -842,45 +1026,48 @@ static __u32 capableCheck_prog(struct hooks_context_t *hook_ctx){
     
     if (!cred) RET_ACCEPT
     
-    bpf_printk("CAPABLE: cap=%d, opts=%u", cap, opts);
+    kuid_t uid = BPF_CORE_READ(cred, uid);
     
-    // Block dangerous capabilities that enable SETUID attacks
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CAPABLE: cap=%d, opts=%u, uid=%d", cap, opts, uid.val));
+    
+    // Allow root to use SETUID/SETGID (needed for SSH, sudo, etc.)
+    if (uid.val == 0) {
+        int lineage_result = lineageUIDAnalizer(hook_ctx->task, &hook_ctx->key);
+        if (lineage_result > LOW_RISK) {
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: UID 0 , CAP_SYS_ADMIN with suspicious lineage %d", lineage_result));
+            RET_REJECT
+        }
+
+        //Mojjjak bro , do not uncomment it , because most of time it comes with pid 0 which is causing issues
+        //FLAG_FOR_HASH(hook_ctx, cap, opts, 0)
+
+        RET_ACCEPT
+    }
+    
+    // Block non-root from using dangerous capabilities
     // CAP_SETUID (7) - allows setuid() calls
     if (cap == 7) {
-        kuid_t uid = BPF_CORE_READ(cred, uid);
-        bpf_printk("BLOCKED: CAP_SETUID requested by UID %d", uid.val);
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SETUID requested by non-root UID %d", uid.val));
         RET_REJECT
     }
     
     // CAP_SETGID (6) - allows setgid() calls  
     if (cap == 6) {
-        kuid_t uid = BPF_CORE_READ(cred, uid);
-        bpf_printk("BLOCKED: CAP_SETGID requested by UID %d", uid.val);
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SETGID requested by non-root UID %d", uid.val));
         RET_REJECT
     }
     
     // CAP_SETPCAP (8) - transfer capabilities
     if (cap == 8) {
-        kuid_t uid = BPF_CORE_READ(cred, uid);
-        bpf_printk("BLOCKED: CAP_SETPCAP requested by UID %d", uid.val);
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SETPCAP requested by non-root UID %d", uid.val));
         RET_REJECT
     }
     
     // CAP_SYS_ADMIN (21) - most dangerous capability
     if (cap == 21) {
-        kuid_t uid = BPF_CORE_READ(cred, uid);
         int lineage_result = lineageUIDAnalizer(hook_ctx->task, &hook_ctx->key);
         if (lineage_result > LOW_RISK) {
-            bpf_printk("BLOCKED: CAP_SYS_ADMIN with suspicious lineage %d", lineage_result);
-            RET_REJECT
-        }
-    }
-    
-    // CAP_DAC_OVERRIDE (1) - bypass file permissions
-    if (cap == 1) {
-        kuid_t uid = BPF_CORE_READ(cred, uid);
-        if (uid.val != 0) {
-            bpf_printk("BLOCKED: CAP_DAC_OVERRIDE by non-root UID %d", uid.val);
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SYS_ADMIN with suspicious lineage %d", lineage_result));
             RET_REJECT
         }
     }

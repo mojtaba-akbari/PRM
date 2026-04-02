@@ -246,3 +246,41 @@ static int ip_in_subnet(__u32 target_ip, __u16 dst_port, const char *rule) {
     return ((target_ip & mask) == (subnet_ip & mask)) &&
            (dst_port >= port_start && dst_port <= port_end);
 }
+
+// Filesystem Superblock Detection
+static bool get_filesystem_info(struct file *file, char *sb_name, bool *is_kernel_fs, char *fs_type) {
+    if (!file || !sb_name || !is_kernel_fs || !fs_type) return false;
+    
+    struct dentry *de = BPF_CORE_READ(file, f_path.dentry);
+    if (!de) return false;
+    
+    struct super_block *sb = BPF_CORE_READ(de, d_sb);
+    if (!sb) return false;
+    
+    struct file_system_type *fs = BPF_CORE_READ(sb, s_type);
+    if (!fs) return false;
+    
+    const char *fs_name = BPF_CORE_READ(fs, name);
+    if (!fs_name) return false;
+    
+    // Read filesystem type name to fs_type buffer
+    bpf_probe_read_str(fs_type, MAX_STR, fs_name);
+    
+    // Detect kernel filesystems and set sb_name
+    *is_kernel_fs = false;
+    if (fs_type[0] == 'p' && fs_type[1] == 'r' && fs_type[2] == 'o' && fs_type[3] == 'c') {
+        *is_kernel_fs = true;
+        sb_name[0] = 'p'; sb_name[1] = 'r'; sb_name[2] = 'o'; sb_name[3] = 'c'; sb_name[4] = '\0';
+    } else if (fs_type[0] == 's' && fs_type[1] == 'y' && fs_type[2] == 's') {
+        *is_kernel_fs = true;
+        sb_name[0] = 's'; sb_name[1] = 'y'; sb_name[2] = 's'; sb_name[3] = '\0';
+    } else if (fs_type[0] == 'd' && fs_type[1] == 'e' && fs_type[2] == 'v') {
+        *is_kernel_fs = true;
+        sb_name[0] = 'd'; sb_name[1] = 'e'; sb_name[2] = 'v'; sb_name[3] = '\0';
+    } else if (fs_type[0] == 't' && fs_type[1] == 'm' && fs_type[2] == 'p' && fs_type[3] == 'f' && fs_type[4] == 's') {
+        *is_kernel_fs = true;
+        sb_name[0] = 't'; sb_name[1] = 'm'; sb_name[2] = 'p'; sb_name[3] = '\0';
+    }
+    
+    return true;
+}

@@ -2,7 +2,7 @@
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_Filters_H
 // Mojtaba, 
 // If you want to hook any filters before Verifier, implement here
-// Input -> Filter 1 -> Filter 2 -> ..... Filter 10 -> output //
+// Input -> Filter 1 -> Filter 2 -> ..... Filter 10 -> output // *** Output = 0 return Accept to core , Output = 1 redirect it to Verifier
 // __RET__ 1 ---> Return output to hook entry before Verifier //
 // 
 #define MAX_FILTERS 10
@@ -42,18 +42,19 @@ static __u32 filter10(struct hooks_context_t * hook, __u32 input);
 
 
 
-#define __RET__ 0
+#define __RET__ 1
 
 #define CONCAT(a, b) a##b
 #define FILTER_EXISTS(n) CONCAT(Filter_, n)
+#define __RETURN__(x,output) if(x) return output;
 
 #define CALL_FILTERS(hook, u32_input,func_number,u32_output) \
     do { \
         if(FILTER_EXISTS(func_number)) \
             u32_output=filter##func_number(hook, u32_input); \
+            if(u32_output == 1) __RETURN__(__RET__, u32_output) \
     } while (0);
 
-#define __RETURN__(x,output) if(x) return output;
 
 #define __INJECT_FILTERS__(hook, u32_input,u32_output) \
                              CALL_FILTERS(hook,u32_input,1, u32_output) \

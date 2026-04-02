@@ -11,7 +11,7 @@
 #endif
 
 #ifndef WILDCARD
-    #define WILDCARD '^'
+    #define WILDCARD "^"
 #endif
 
 #ifndef NEGETIVE_UPDATE
@@ -28,6 +28,10 @@
 
 #ifndef AF_INET
     #define AF_INET 2
+#endif
+
+#ifndef AF_INET6
+    #define AF_INET6 10
 #endif
 
 #ifndef EPERM
@@ -48,6 +52,26 @@
 
 #ifndef PROT_NONE
     #define PROT_NONE 0x0
+#endif
+
+#ifndef O_WRONLY
+    #define O_WRONLY 00000001
+#endif
+
+#ifndef O_RDWR
+    #define O_RDWR 00000002
+#endif
+
+#ifndef O_CREAT
+    #define O_CREAT 00000100
+#endif
+
+#ifndef O_TRUNC
+    #define O_TRUNC 00001000
+#endif
+
+#ifndef O_APPEND
+    #define O_APPEND 00002000
 #endif
 
 #ifndef ENOENT
