@@ -431,8 +431,6 @@ last reference (pin or fd) is removed.
   than 15 characters are truncated (this is a kernel `comm` limitation).
 - The eBPF verifier imposes loop and instruction limits that constrain the
   complexity of PROG handlers.
-- Production benchmarks on large-scale HPC systems have not yet been
-  conducted.
 
 ---
 
