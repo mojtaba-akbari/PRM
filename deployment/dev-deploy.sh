@@ -4,8 +4,8 @@
 PROJECT_DIR="$(pwd)/../"
 DEPLOY_DIR="$(pwd)"
 QEMU_DIR="$HOME/qemu-vms/rocky9-framework"  # Can be changed
-OS="https://download.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2" # If you need try with another OS
-OS_file="Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+OS="https://download.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+OS_file="Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
 
 installation()
 {
@@ -56,14 +56,14 @@ installation()
       - fuse3
 EOF
 
-    cloud-localds seed.img user-data <(echo "instance-id: rocky9-framework")
+    cloud-localds seed.img user-data <(echo "instance-id: rocky10-framework")
     #Do not change CPU please 
     qemu-system-x86_64 \
       -cpu max \
       -machine q35,accel=kvm \
       -smp 4,sockets=1,cores=2,threads=2 \
       -m 2048 \
-      -drive file=Rocky-9-GenericCloud-Base.latest.x86_64.qcow2,if=virtio,format=qcow2 \
+      -drive file=Rocky-10-GenericCloud-Base.latest.x86_64.qcow2,if=virtio,format=qcow2 \
       -drive file=seed.img,if=virtio,format=raw \
       -device virtio-net-pci,netdev=net0 \
       -netdev user,id=net0,hostfwd=tcp::2222-:22 \
