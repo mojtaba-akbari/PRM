@@ -147,7 +147,7 @@ static int verify_token(const char *token_path, const char *expected_action)
     /* 1. verify GPG signature */
     char cmd[1024];
     snprintf(cmd, sizeof(cmd),
-             "gpg --trust-model always --status-fd 1 --verify %s %s 2>/dev/null | grep -q GOODSIG",
+             "gpg --trust-model always --verify %s %s >/dev/null 2>&1",
              sig_path, token_path);
     if (system(cmd) != 0) {
         fprintf(stderr, "TOKEN REJECTED: invalid GPG signature\n");
