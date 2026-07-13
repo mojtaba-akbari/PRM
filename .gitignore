@@ -2,3 +2,5 @@
 .qodo
 benchmarks/
 test-samples/
+deployment/ecc
+deployment/ecli
