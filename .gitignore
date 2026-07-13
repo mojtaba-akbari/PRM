@@ -1,4 +1,4 @@
 .vscode/
 .qodo
-.benchmarks/
-.test-samples/
+benchmarks/
+test-samples/
