@@ -106,9 +106,103 @@ def test_hostname_exec():
     """Test executing hostname command"""
     subprocess.run(['hostname'], check=True)
 
+def test_devshm_exec_direct():
+    """Write a script to /dev/shm and execute it directly"""
+    path = '/dev/shm/.prm_test'
+    try:
+        with open(path, 'w') as f:
+            f.write('#!/bin/sh\necho pwned\n')
+        os.chmod(path, 0o755)
+        r = subprocess.run([path], capture_output=True, timeout=3)
+        if r.returncode == 0:
+            raise RuntimeError("executed successfully -- NOT blocked")
+        raise PermissionError(f"exit code {r.returncode}")
+    finally:
+        try: os.unlink(path)
+        except: pass
+
+def test_devshm_exec_bash():
+    """Write a script to /dev/shm and run it through bash"""
+    path = '/dev/shm/.prm_test_bash'
+    try:
+        with open(path, 'w') as f:
+            f.write('echo pwned\n')
+        r = subprocess.run(['/bin/bash', path], capture_output=True, timeout=3)
+        if r.returncode == 0 and b'pwned' in r.stdout:
+            raise RuntimeError("bash executed /dev/shm script -- NOT blocked")
+        raise PermissionError(f"exit code {r.returncode}")
+    finally:
+        try: os.unlink(path)
+        except: pass
+
+def test_devshm_exec_python():
+    """Write a python script to /dev/shm and run it"""
+    path = '/dev/shm/.prm_test_py'
+    try:
+        with open(path, 'w') as f:
+            f.write('print("pwned")\n')
+        r = subprocess.run([sys.executable, path], capture_output=True, timeout=3)
+        if r.returncode == 0 and b'pwned' in r.stdout:
+            raise RuntimeError("python executed /dev/shm script -- NOT blocked")
+        raise PermissionError(f"exit code {r.returncode}")
+    finally:
+        try: os.unlink(path)
+        except: pass
+
+def test_devshm_exec_elf():
+    """Compile a tiny C program into /dev/shm and execute it"""
+    src = '/dev/shm/.prm_test.c'
+    binary = '/dev/shm/.prm_test_elf'
+    try:
+        with open(src, 'w') as f:
+            f.write('int main(){return 0;}\n')
+        r = subprocess.run(['gcc', '-o', binary, src], capture_output=True, timeout=10)
+        if r.returncode != 0:
+            raise PermissionError(f"gcc failed (may be blocked): {r.stderr.decode()[:100]}")
+        os.chmod(binary, 0o755)
+        r = subprocess.run([binary], capture_output=True, timeout=3)
+        if r.returncode == 0:
+            raise RuntimeError("ELF from /dev/shm executed -- NOT blocked")
+        raise PermissionError(f"exit code {r.returncode}")
+    finally:
+        try: os.unlink(src)
+        except: pass
+        try: os.unlink(binary)
+        except: pass
+
+def test_tmp_exec_direct():
+    """Write a script to /tmp and execute it directly"""
+    path = '/tmp/.prm_test_exec'
+    try:
+        with open(path, 'w') as f:
+            f.write('#!/bin/sh\necho pwned\n')
+        os.chmod(path, 0o755)
+        r = subprocess.run([path], capture_output=True, timeout=3)
+        if r.returncode == 0:
+            raise RuntimeError("executed from /tmp -- NOT blocked")
+        raise PermissionError(f"exit code {r.returncode}")
+    finally:
+        try: os.unlink(path)
+        except: pass
+
+def test_vartmp_exec_direct():
+    """Write a script to /var/tmp and execute it directly"""
+    path = '/var/tmp/.prm_test_exec'
+    try:
+        with open(path, 'w') as f:
+            f.write('#!/bin/sh\necho pwned\n')
+        os.chmod(path, 0o755)
+        r = subprocess.run([path], capture_output=True, timeout=3)
+        if r.returncode == 0:
+            raise RuntimeError("executed from /var/tmp -- NOT blocked")
+        raise PermissionError(f"exit code {r.returncode}")
+    finally:
+        try: os.unlink(path)
+        except: pass
+
 def main():
     print("=== PRM Security Framework Test ===")
-    
+
     tests = [
         ("Memory Executable Allocation", test_memory_exec),
         ("Invalid Directory Write (/tmp)", test_invalid_directory_write),
@@ -123,18 +217,48 @@ def main():
         ("Sensitive File Access (/etc/shadow)", test_sensitive_file_access),
         ("Process Memory Access (/proc/1/mem)", test_proc_mem_access),
         ("Hostname Command Execution", test_hostname_exec),
+        ("Exec from /dev/shm (direct)", test_devshm_exec_direct),
+        ("Exec from /dev/shm (via bash)", test_devshm_exec_bash),
+        ("Exec from /dev/shm (via python)", test_devshm_exec_python),
+        ("Exec from /dev/shm (ELF binary)", test_devshm_exec_elf),
+        ("Exec from /tmp (direct)", test_tmp_exec_direct),
+        ("Exec from /var/tmp (direct)", test_vartmp_exec_direct),
     ]
     
+    # parse args: numbers, ranges, or substrings
+    selected = []
+    if len(sys.argv) > 1:
+        if sys.argv[1] in ('-l', '--list'):
+            for i, (name, _) in enumerate(tests):
+                print(f"  {i:2d}  {name}")
+            sys.exit(0)
+        for arg in sys.argv[1:]:
+            if '-' in arg and arg[0].isdigit():
+                lo, hi = arg.split('-', 1)
+                selected.extend(range(int(lo), int(hi) + 1))
+            elif arg.isdigit():
+                selected.append(int(arg))
+            else:
+                for i, (name, _) in enumerate(tests):
+                    if arg.lower() in name.lower():
+                        selected.append(i)
+        selected = sorted(set(selected))
+    else:
+        selected = list(range(len(tests)))
+
+    run = [(tests[i] if i < len(tests) else None) for i in selected]
+    run = [t for t in run if t]
+
     passed = 0
-    total = len(tests)
-    
-    for test_name, test_func in tests:
+    total = len(run)
+
+    for test_name, test_func in run:
         if test_step(test_name, test_func):
             passed += 1
-    
+
     print(f"\n=== Results ===")
     print(f"Passed: {passed}/{total}")
-    
+
     if passed == total:
         print("ALL TESTS PASSED - PRM Framework is working correctly!")
         sys.exit(0)

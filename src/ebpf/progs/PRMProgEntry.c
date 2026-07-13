@@ -51,7 +51,7 @@ static __u32 signalKillTracer_prog(struct hooks_context_t *hook_ctx){
 
     if(value->pid != target_pid) 
     {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Target PID: %d, has been killed by Killer PID: %d", target_pid, caller_pid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("ALLOWED: PID %d tried to kill PID %d (not a protected process)", caller_pid, target_pid));
         RET_ACCEPT_FORCEFULLY
     }
     
@@ -105,7 +105,7 @@ static __u32 denyWriteOutSideOfValidDirectories_prog(struct hooks_context_t *hoo
     }
     
     if (!first_after_root) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INODE CREATE: Path too deep (>MIN_ITR), REJECTED"));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: File creation rejected, path too deep to verify"));
         char_memory_delete(&path_key);
         RET_REJECT
     }
@@ -113,7 +113,7 @@ static __u32 denyWriteOutSideOfValidDirectories_prog(struct hooks_context_t *hoo
     dname = BPF_CORE_READ(first_after_root, d_name.name);
     bpf_core_read_str(path_buf->_buff_, MAX_STR, dname);
     
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Path: %s", path_buf->_buff_));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: File creation requested in directory: %s", path_buf->_buff_));
 
 
     bool resCondition=0;
@@ -125,7 +125,7 @@ static __u32 denyWriteOutSideOfValidDirectories_prog(struct hooks_context_t *hoo
     }
 
 
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INODE CREATE REJECTED for %s",path_buf->_buff_));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: File creation denied in restricted directory '%s'",path_buf->_buff_));
 
     RET_REJECT 
 }
@@ -157,7 +157,7 @@ static __u32 denyWriteOutSideOfValidDirectories_fingerprint(struct hooks_context
     dname = BPF_CORE_READ(first_after_root, d_name.name);
     bpf_core_read_str(path_buf->_buff_, MAX_STR, dname);
     
-    bpf_printk("Path: %s", path_buf->_buff_);
+    bpf_printk("INSPECT: Fingerprint check for directory: %s", path_buf->_buff_);
 
     FLAG_FOR_HASH(hook_ctx,str_to_u32(path_buf->_buff_),0,0)
     RET_ACCEPT
@@ -178,54 +178,23 @@ static __u32 denyMakeSocketToEndHost_prog(struct hooks_context_t *hook_ctx){
 
     family = BPF_CORE_READ(address, sa_family);
 
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Outbound Family connection to %d", family));
     checkValidElemConfigNUMBER(family, SocketProtocolInvalid, RET_REJECT)
 
-    // IPv6 whitelist: ::1, fc00::/7, fe80::/10
-    if (family == 10) {
-        struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)address;
-        struct in6_addr ip6;
-        BPF_CORE_READ_INTO(&ip6, addr6, sin6_addr);
-        
-        // ::1 (localhost)
-        if (ip6.in6_u.u6_addr32[0] == 0 && ip6.in6_u.u6_addr32[1] == 0 && 
-            ip6.in6_u.u6_addr32[2] == 0 && ip6.in6_u.u6_addr32[3] == 0x01000000) {
-            RET_ACCEPT
-        }
-        // fc00::/7 (ULA private)
-        if ((ip6.in6_u.u6_addr8[0] & 0xFE) == 0xFC) {
-            RET_ACCEPT
-        }
-        // fe80::/10 (link-local)
-        if ((ip6.in6_u.u6_addr8[0] == 0xFE) && ((ip6.in6_u.u6_addr8[1] & 0xC0) == 0x80)) {
-            RET_ACCEPT
-        }
-        
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("IPv6 blocked"));
-        RET_REJECT
-    }
-
-    // Implement Me more // Mojtaba
     if (family == AF_INET) {
         dest_ip = BPF_CORE_READ((struct sockaddr_in *)address, sin_addr.s_addr);
         dest_port = BPF_CORE_READ((struct sockaddr_in *)address, sin_port);
+        dest_port = (dest_port >> 8) | (dest_port << 8);
 
-        dest_port = (dest_port >> 8) | (dest_port<<8);
-        
-        bpf_printk("IP: %pI4, Port: %d", &dest_ip, dest_port);
-        
-        // Whitelist: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-        __u32 ip_host = to_network_order(dest_ip);
-        if ((ip_host & 0xFF000000) == 0x7F000000 ||  // 127.x.x.x
-            (ip_host & 0xFF000000) == 0x0A000000 ||  // 10.x.x.x
-            (ip_host & 0xFFF00000) == 0xAC100000 ||  // 172.16-31.x.x
-            (ip_host & 0xFFFF0000) == 0xC0A80000) {  // 192.168.x.x
-            FLAG_FOR_HASH(hook_ctx, dest_ip, dest_port, family)
-            RET_ACCEPT
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Outbound connection to %pI4 port %d", &dest_ip, dest_port));
+
+        int len = sizeof(IPDestRules._holder_) / sizeof(IPDestRules._holder_[0]);
+        for(int i = 0; i < len; i++) {
+            if (ip_in_subnet(dest_ip, dest_port, IPDestRules._holder_[i])) {
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Outbound connection denied to port %d", dest_port));
+                RET_REJECT
+            }
         }
-        
-        // Block everything else
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Socket connection rejected - not in whitelist"));
-        RET_REJECT
     }
 
     FLAG_FOR_HASH(hook_ctx, dest_ip, dest_port, family)
@@ -288,18 +257,18 @@ static __u32 bprmSecurityCheck_prog(struct hooks_context_t *hook_ctx){
     int res = bpf_probe_read_str(filename_buf->_buff_, LARGE_STR, bprm_filename);
     if (res <= 0 || (res > 0 && res < 3))
     {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BPRM with less than 3 char file name !!!! rejected\n"));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Program execution rejected (filename too short, suspicious)\n"));
         char_memory_delete(&filename_key);
         RET_REJECT
     }
 
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BPRM Filename called : %s\n", filename_buf->_buff_));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Program execution requested: %s\n", filename_buf->_buff_));
 
     checkValidElemConfigForceSTRLen(filename_buf->_buff_, BPRMDestination, RET_REJECT)
 
     struct file *file = BPF_CORE_READ(bprm, file);
     if (!file){
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BPRM Suspicious exec: no file struct (possibly memfd or deleted)\n"));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("WARNING: Program has no file on disk (possibly running from memory)\n"));
         char_memory_delete(&filename_key);
         RET_ACCEPT
     }
@@ -314,7 +283,7 @@ static __u32 bprmSecurityCheck_prog(struct hooks_context_t *hook_ctx){
         if (dentry) {
             const char *dname = BPF_CORE_READ(dentry, d_name.name);
             bpf_core_read_str(filepath_buf->_buff_, MAX_STR, dname);
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BPRM File attached : %s\n", filepath_buf->_buff_));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Binary file on disk: %s\n", filepath_buf->_buff_));
         }
         char_memory_delete(&filepath_key);
     }
@@ -330,13 +299,13 @@ static __u32 bprmSecurityCheck_prog(struct hooks_context_t *hook_ctx){
     if (interp) {
         if (interpreter_buf) {
             if (bpf_probe_read_str(interpreter_buf->_buff_, LARGE_STR, interp) > 0) {
-                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BPRM Interpreter caller : %s\n", interpreter_buf->_buff_));
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Interpreter used: %s\n", interpreter_buf->_buff_));
                 checkValidElemConfigForceSTRLen(interpreter_buf->_buff_, BPRMInterpreter,RET_REJECT)
             }
         }
     }
 
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Safe BPRM Call\n"));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("ALLOWED: Program execution passed all checks\n"));
 
     FLAG_FOR_HASH(hook_ctx, str_to_u32(filename_buf->_buff_), str_to_u32(interpreter_buf->_buff_), filevalid)
 
@@ -408,7 +377,7 @@ static __u32 memoryProtectCheck_prog(struct hooks_context_t * hook_ctx){
         if (hook_ctx->key.pid != 0) {
             lineage = lineageUIDAnalizer(taskAskMMAP, &hook_ctx->key);
             if( lineage > BASE){ // JUST ROOT Valid Pattern
-                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Memory RX without root permission has been requested, MMAP attached to [anonymous]!"));
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Anonymous memory made executable (code injection attempt)!"));
                 char_memory_delete(&path_key);
                 RET_REJECT
             }
@@ -438,7 +407,7 @@ static __u32 memoryProtectCheck_prog(struct hooks_context_t * hook_ctx){
         bpf_core_read_str(path_buf->_buff_, MAX_STR, dname);
 
         FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),
-            bpf_printk("Memory RX without root permission has been requested, MMAP attached to [%s] directory and file [%s]!",path_buf->_buff_));
+            bpf_printk("BLOCKED: Executable memory requested from untrusted directory '%s'",path_buf->_buff_));
 
         checkValidElemConfigForceSTRLen(path_buf->_buff_, MMAPFileAttached, RET_REJECT)
     }
@@ -527,12 +496,12 @@ static __u32 denyIncomeSocket_prog(struct hooks_context_t *hook_ctx){
         src_ip = BPF_CORE_READ(sk, __sk_common.skc_daddr);
         dst_port = BPF_CORE_READ(sk, __sk_common.skc_num);
         
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Income from IP: %pI4 to Port: %d", &src_ip, dst_port));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Incoming connection from %pI4 to port %d", &src_ip, dst_port));
 
         int len = sizeof(IPSrcRules._holder_) / sizeof(IPSrcRules._holder_[0]);
         for(int i = 0; i < len; i++) {
             if (ip_in_subnet(src_ip, dst_port, IPSrcRules._holder_[i])) {
-                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Income socket connection rejected!!! Source IP matched IPSrcRules for dst port %d", dst_port));
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Incoming connection denied for port %d (not in allowed range)", dst_port));
                 RET_REJECT
             }   
         }
@@ -616,7 +585,7 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
     bool is_kernel_fs=false;
     get_filesystem_info(file,sb_name_buf->_buff_,&is_kernel_fs,fs_type_buf->_buff_);
 
-    bpf_printk("File Type : %s %s",sb_name_buf->_buff_,fs_type_buf->_buff_);
+    bpf_printk("INSPECT: File system type: %s %s",sb_name_buf->_buff_,fs_type_buf->_buff_);
 
     struct dentry *cur = de;
     struct dentry *parent;
@@ -634,7 +603,7 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
     }
     
     if (!first_after_root) {
-        bpf_printk("FILE_OPEN: Path too deep (>MIN_ITR), REJECTED");
+        bpf_printk("BLOCKED: File open rejected, path too deep to verify");
         char_memory_delete(&path_key);
         char_memory_delete(&module_key);
         char_memory_delete(&sb_name_key);
@@ -651,7 +620,7 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
     unsigned int f_flags = BPF_CORE_READ(file, f_flags);
     bool is_write = (f_flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND));
     
-    bpf_printk("FILE_OPEN: file=%s, dir=%s, is_write=%d", module_name_buf->_buff_, full_path_buf->_buff_, is_write);
+    bpf_printk("INSPECT: Opening file='%s' in dir='%s' (write=%d)", module_name_buf->_buff_, full_path_buf->_buff_, is_write);
     
     bool is_system_dir = false;
     bool is_aggresive = false;
@@ -661,13 +630,13 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
     checkValidElemConfigSTR(sb_name_buf->_buff_, BinaryHomeDirectory, is_system_dir=true;)
     // For god , JK will hit me if i develop you , stay here and hold on 
     
-    bpf_printk("FILE_OPEN: is_system_dir=%d", is_system_dir);
+    bpf_printk("INSPECT: System directory=%d", is_system_dir);
     
     // Check Aggresive before let them pass through ---> Mojjjak , it is a little bit difficult because the system highly is being restricted //
     checkValidElemConfigSTR(module_name_buf->_buff_, OpenFileDenyAggressivly, is_aggresive=true;)
     if(is_aggresive && is_system_dir)
     {
-        bpf_printk("FILE_OPEN: FORCE SHUT-DOWN OPENING");
+        bpf_printk("BLOCKED: Opening this file is strictly forbidden");
         char_memory_delete(&path_key);
         char_memory_delete(&module_key);
         char_memory_delete(&sb_name_key);
@@ -677,7 +646,7 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
 
     // I have a bug here !!!!!!!!!!!!!!!!!!!!!!!! fix this mojjjak , i have to be un-readable even for some sb !
     if (is_system_dir && !is_write) {
-        bpf_printk("FILE_OPEN: ALLOWED system read");
+        bpf_printk("ALLOWED: Reading from system directory");
         char_memory_delete(&path_key);
         char_memory_delete(&module_key);
         char_memory_delete(&sb_name_key);
@@ -689,10 +658,10 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
     bool access_allowed = false;
     checkValidElemConfigSTR(full_path_buf->_buff_, ValidateDirectory, access_allowed=true;)
     
-    bpf_printk("FILE_OPEN: access_allowed=%d", access_allowed);
+    bpf_printk("INSPECT: Directory access allowed=%d", access_allowed);
     
     if (!access_allowed) {
-        bpf_printk("FILE_OPEN: REJECTED - not in ValidateDirectory");
+        bpf_printk("BLOCKED: File is outside allowed directories");
         char_memory_delete(&path_key);
         char_memory_delete(&module_key);
         char_memory_delete(&sb_name_key);
@@ -704,7 +673,7 @@ static __u32 denyFileOpen_prog(struct hooks_context_t *hook_ctx){
     bool resCondition2=0;
     checkValidElemConfigForceSTRLen(module_name_buf->_buff_, OpenFileDeny, resCondition2=1;)
     if(resCondition2) {
-        bpf_printk("FILE_OPEN EXTENSION: REJECTED - No Valid File");
+        bpf_printk("BLOCKED: File type is not allowed");
         char_memory_delete(&path_key);
         char_memory_delete(&module_key);
         char_memory_delete(&sb_name_key);
@@ -823,7 +792,7 @@ static __u32 denyLoadModule_prog(struct hooks_context_t *hook_ctx){
 
     bpf_core_read_str(module_name_buf->_buff_, MAX_STR, kmod_name);
     
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Module request: %s", module_name_buf->_buff_));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Kernel module load requested: %s", module_name_buf->_buff_));
 
     checkValidElemConfigForceSTRLen(module_name_buf->_buff_, ModuleDeny, RET_REJECT)
     
@@ -855,14 +824,14 @@ __PROG_REGISTER__(denyLoadModule, KERNEL_MODULE_REQUEST, denyLoadModule_prog, de
 
 // credPrepareCheck //
 static __u32 credPrepareCheck_prog(struct hooks_context_t *hook_ctx){
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("=== CRED_PREPARE HOOK CALLED ==="));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: Credential change detected"));
     
     struct cred *new_cred = hook_ctx->args.cred_prepare.new;
     struct cred *old_cred = hook_ctx->args.cred_prepare.old;
     int flags = hook_ctx->args.cred_prepare.flags;
     
     if (!new_cred || !old_cred) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("CRED_PREPARE: Missing cred structures"));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("WARNING: Credential structures missing, allowing"));
         RET_ACCEPT
     }
     
@@ -871,17 +840,17 @@ static __u32 credPrepareCheck_prog(struct hooks_context_t *hook_ctx){
     kgid_t old_gid = BPF_CORE_READ(old_cred, gid);
     kgid_t new_gid = BPF_CORE_READ(new_cred, gid);
     
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("CRED_PREPARE: UID %d -> %d, GID %d -> %d", old_uid.val, new_uid.val, old_gid.val, new_gid.val));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("INSPECT: User ID changing from %d to %d, Group ID from %d to %d", old_uid.val, new_uid.val, old_gid.val, new_gid.val));
     
     // Block privilege escalation to root (UID 0)
     if (new_uid.val == 0 && old_uid.val != 0) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Privilege escalation to root UID from %d", old_uid.val));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: User %d tried to become root (privilege escalation)", old_uid.val));
         RET_REJECT
     }
     
     // Block privilege escalation to root group (GID 0)
     if (new_gid.val == 0 && old_gid.val != 0) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Privilege escalation to root GID from %d", old_gid.val));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Group %d tried to become root group (privilege escalation)", old_gid.val));
         RET_REJECT
     }
     
@@ -890,12 +859,12 @@ static __u32 credPrepareCheck_prog(struct hooks_context_t *hook_ctx){
     int lineage_result = BASE;
     if (hook_ctx->key.pid != 0 && new_gid.val == 0) {
         lineage_result = lineageUIDAnalizer(hook_ctx->task, &hook_ctx->key);
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Suspicious: Cred Prepare UID lineage pattern detected: %d", lineage_result));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("WARNING: Suspicious process ancestry pattern detected (severity=%d)", lineage_result));
     }
     
     // Block if suspicious UID pattern detected
     if (lineage_result > LOW_RISK) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Suspicious UID lineage pattern detected: %d", lineage_result));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Process ancestry indicates possible attack (severity=%d)", lineage_result));
         RET_REJECT
     }
     
@@ -942,34 +911,34 @@ static __u32 taskFixSetUIDCheck_prog(struct hooks_context_t *hook_ctx){
     kgid_t old_gid = BPF_CORE_READ(old_cred, gid);
     kgid_t new_gid = BPF_CORE_READ(new_cred, gid);
     
-    bpf_printk("TASK_FIX_SETUID: UID %d->%d, EUID %d->%d, GID %d->%d, flags=%d", old_uid.val, new_uid.val, old_euid.val, new_euid.val, old_gid.val, new_gid.val, flags);
+    bpf_printk("INSPECT: SetUID change: UID %d->%d, EUID %d->%d, GID %d->%d", old_uid.val, new_uid.val, old_euid.val, new_euid.val, old_gid.val, new_gid.val, flags);
     
     // Block effective UID escalation to root (catches setuid binaries)
     if (new_euid.val == 0 && old_euid.val != 0 && old_uid.val != 0) {
         // Allow if it's a legitimate setuid binary from system paths
         struct execPath *ePath = getExecPath(task, createTaskUKey(task, &hook_ctx->taskUKey));
         if (ePath) {
-            bpf_printk("ExecPath found, isValidDirectory=%d", ePath->isValidDirectory);
+            bpf_printk("INSPECT: Binary runs from trusted directory=%d", ePath->isValidDirectory);
             if (ePath->isValidDirectory == 1) {
-                bpf_printk("ALLOWED: setuid binary from valid directory");
+                bpf_printk("ALLOWED: SetUID binary from a trusted system directory");
                 RET_ACCEPT
             }
         } else {
-            bpf_printk("ExecPath is NULL");
+            bpf_printk("WARNING: Could not determine binary path");
         }
-        bpf_printk("EXPLOIT BLOCKED: seteuid(0) escalation from EUID %d", old_euid.val);
+        bpf_printk("BLOCKED: Process tried to gain root via seteuid(0) from EUID %d", old_euid.val);
         RET_REJECT
     }
 
     // Block real UID escalation to root
     if (new_uid.val == 0 && old_uid.val != 0) {
-        bpf_printk("EXPLOIT BLOCKED: setuid(0) escalation from UID %d", old_uid.val);
+        bpf_printk("BLOCKED: Process tried to gain root via setuid(0) from UID %d", old_uid.val);
         RET_REJECT
     }
     
     // Block GID escalation to root
     if (new_gid.val == 0 && old_gid.val != 0) {
-        bpf_printk("EXPLOIT BLOCKED: setgid(0) escalation from GID %d", old_gid.val);
+        bpf_printk("BLOCKED: Process tried to gain root group via setgid(0) from GID %d", old_gid.val);
         RET_REJECT
     }
     
@@ -980,13 +949,13 @@ static __u32 taskFixSetUIDCheck_prog(struct hooks_context_t *hook_ctx){
     }
     
     if (lineage_result > LOW_RISK) {
-        bpf_printk("EXPLOIT BLOCKED: Suspicious UID lineage pattern %d", lineage_result);
+        bpf_printk("BLOCKED: SetUID denied due to suspicious process ancestry (severity=%d)", lineage_result);
         RET_REJECT
     }
     
     // Container escape detection
     if (new_uid.val == 0 && is_containerized_root(task)) {
-        bpf_printk("EXPLOIT BLOCKED: Container escape attempt to root");
+        bpf_printk("BLOCKED: Container process tried to escape to root");
         RET_REJECT
     }
     
@@ -1028,13 +997,13 @@ static __u32 capableCheck_prog(struct hooks_context_t *hook_ctx){
     
     kuid_t uid = BPF_CORE_READ(cred, uid);
     
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CAPABLE: cap=%d, opts=%u, uid=%d", cap, opts, uid.val));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("INSPECT: Capability check cap=%d for UID %d", cap, opts, uid.val));
     
     // Allow root to use SETUID/SETGID (needed for SSH, sudo, etc.)
     if (uid.val == 0) {
         int lineage_result = lineageUIDAnalizer(hook_ctx->task, &hook_ctx->key);
         if (lineage_result > LOW_RISK) {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: UID 0 , CAP_SYS_ADMIN with suspicious lineage %d", lineage_result));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Root process has suspicious ancestry, admin capability denied (severity=%d)", lineage_result));
             RET_REJECT
         }
 
@@ -1047,19 +1016,19 @@ static __u32 capableCheck_prog(struct hooks_context_t *hook_ctx){
     // Block non-root from using dangerous capabilities
     // CAP_SETUID (7) - allows setuid() calls
     if (cap == 7) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SETUID requested by non-root UID %d", uid.val));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Non-root user %d tried to use setuid capability", uid.val));
         RET_REJECT
     }
     
     // CAP_SETGID (6) - allows setgid() calls  
     if (cap == 6) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SETGID requested by non-root UID %d", uid.val));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Non-root user %d tried to use setgid capability", uid.val));
         RET_REJECT
     }
     
     // CAP_SETPCAP (8) - transfer capabilities
     if (cap == 8) {
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SETPCAP requested by non-root UID %d", uid.val));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Non-root user %d tried to transfer capabilities", uid.val));
         RET_REJECT
     }
     
@@ -1067,7 +1036,7 @@ static __u32 capableCheck_prog(struct hooks_context_t *hook_ctx){
     if (cap == 21) {
         int lineage_result = lineageUIDAnalizer(hook_ctx->task, &hook_ctx->key);
         if (lineage_result > LOW_RISK) {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: CAP_SYS_ADMIN with suspicious lineage %d", lineage_result));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Admin capability denied due to suspicious process ancestry (severity=%d)", lineage_result));
             RET_REJECT
         }
     }

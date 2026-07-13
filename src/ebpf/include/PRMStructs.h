@@ -1,9 +1,9 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_STRUCTS
 #define FILTERING_SYSCALL_FRAMEWORK_STRUCTS
 
-#include "conf/PRM.h"
-#include <include/baseheaders.h>
-#include <include/BTFFunctions.h>
+#include "../conf/PRM.h"
+#include "baseheaders.h"
+#include "BTFFunctions.h"
 
 // Mojtaba :) , The Structures Notice never change till you know what you are doing here // ***
 // Use Stack Programming To Design The Whole PRM //
@@ -212,6 +212,8 @@ struct hooks_context_t{
     struct taskUKey taskUKeyGrandParent;
     
     struct UniqueKey key;
+
+    __u32 uid;
 
     union lsm_args_u args;
 };

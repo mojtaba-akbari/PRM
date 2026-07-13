@@ -1,4 +1,4 @@
-#include "../include/conf/PRM.h"
+#include "../conf/PRM.h"
 #include "../include/PRMStructs.h"
 #include "../include/PRMProgStructs.h"
 

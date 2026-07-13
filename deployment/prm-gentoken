@@ -1,0 +1,54 @@
+#!/bin/bash
+# prm-gentoken - Generate a signed token for prm-loader load/unload
+#
+# Usage:
+#   prm-gentoken <action> <hostname>
+#   prm-gentoken manage login-node-01   # single token for both load and unload
+#   prm-gentoken unload login-node-01
+#   prm-gentoken load login-node-01
+#
+# The token is valid for 1 hour and single-use.
+# Requires: gpg with the PRM signing key
+
+set -e
+
+ACTION="$1"
+HOSTNAME="$2"
+GPG_KEY="${PRM_GPG_KEY:-prm-admin@gwdg.de}"
+
+if [ -z "$ACTION" ] || [ -z "$HOSTNAME" ]; then
+    echo "Usage: prm-gentoken <load|unload|manage> <hostname>"
+    echo ""
+    echo "Examples:"
+    echo "  prm-gentoken manage login-01   # works for both load and unload"
+    echo "  prm-gentoken unload login-01"
+    echo "  prm-gentoken load login-01"
+    echo ""
+    echo "Environment:"
+    echo "  PRM_GPG_KEY   GPG key ID to sign with (default: prm-admin@gwdg.de)"
+    exit 1
+fi
+
+if [ "$ACTION" != "load" ] && [ "$ACTION" != "unload" ] && [ "$ACTION" != "manage" ]; then
+    echo "ERROR: action must be 'load', 'unload', or 'manage'"
+    exit 1
+fi
+
+TIMESTAMP=$(date +%s)
+NONCE=$(head -c 16 /dev/urandom | xxd -p)
+TOKEN="${ACTION}:${HOSTNAME}:${TIMESTAMP}:${NONCE}"
+
+OUTFILE="/tmp/prm-token-${HOSTNAME}-${ACTION}-$$"
+
+echo -n "$TOKEN" > "${OUTFILE}"
+gpg --detach-sign --armor --local-user "$GPG_KEY" --output "${OUTFILE}.sig" "${OUTFILE}" 2>/dev/null
+
+echo "Token generated:"
+echo "  File: ${OUTFILE}"
+echo "  Sig:  ${OUTFILE}.sig"
+echo "  Content: ${TOKEN}"
+echo "  Expires: $(date -d @$((TIMESTAMP + 3600)) 2>/dev/null || date -r $((TIMESTAMP + 3600)))"
+echo ""
+echo "Usage on target:"
+echo "  scp ${OUTFILE} ${OUTFILE}.sig ${HOSTNAME}:/tmp/"
+echo "  ssh ${HOSTNAME} prm-loader ${ACTION} --token ${OUTFILE}"

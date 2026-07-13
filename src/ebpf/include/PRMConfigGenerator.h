@@ -1,7 +1,7 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_CONFIG_GENERATOR
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_CONFIG_GENERATOR
 
-#include "../../include/baseheaders.h"
+#include "baseheaders.h"
 
 #define ENTRY(elem) #elem
 

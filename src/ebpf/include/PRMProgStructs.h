@@ -1,7 +1,7 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_STRUCT
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_STRUCT
 
-#include "conf/PRMProg.h"
+#include "../conf/PRMProg.h"
 #include "PRMStructs.h"
 
 

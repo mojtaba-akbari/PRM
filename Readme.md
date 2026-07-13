@@ -80,50 +80,57 @@ score used by several PROG handlers to block privilege escalation.
 
 ```
 src/
-  hookentry.c              LSM hook entry points (30+ hooks)
-  prm-loader.c             User-space loader -- compiles to prm-loader
-  trace-collector.c        Reads trace_pipe, forwards to syslog
-  include/
-    baseheaders.h          Buffer sizes, constants
-    BTFFunctions.h         String helpers (strcmp_forceS1, etc.)
-  PRM/
-    include/
-      conf/
-        PRM.h              Rule table (300 RELATION_* macros)
-        PRMConfig.h         Security configuration (paths, IPs, modules, ...)
-        PRMProg.h           PROG dispatcher config
-      PRMStructs.h         Data structures, BPF maps
-      PRMVerifier.h        Verifier (rule matching engine)
-      PRMFilters.h         Fast-decision filters
-      PRMProgDispatcher.h  PROG dispatch logic
-      PRMProgEntry.h       PROG handler declarations
-      PRMProgHelper.h      PROG utility functions
-      PRMConfigGenerator.h Config macros (__SCONFIG__, __LCONFIG__, etc.)
-    src/
+  ebpf/
+    hookentry.c            LSM hook entry points (30+ hooks)
+    core/
       PRMVerifier.c        Rule matching, ancestry extraction, cache
       PRMFilters.c         Kernel-thread bypass, self-PID detection
-      PRMProgEntry.c       All PROG handler implementations
-      PRMProgDispatcher.c  PROG dispatch switch
-      PRMProgHelper.c      Shared PROG utilities
       PRMStructs.c         Map operations, rule loading
       PRMCacheService.c    LRU cache implementation
+      PRMProgDispatcher.c  PROG dispatch switch
+    progs/
+      PRMProgEntry.c       All PROG handler implementations
+      PRMProgHelper.c      Shared PROG utilities (IP/CIDR matching, etc.)
+    include/
+      baseheaders.h        Buffer sizes, constants
+      BTFFunctions.h       String helpers (strcmp_forceS1, etc.)
+      PRMVerifier.h        Verifier header
+      PRMFilters.h         Fast-decision filters header
+      PRMStructs.h         Data structures, BPF maps
+      PRMProgDispatcher.h  PROG dispatch logic
+      PRMProgEntry.h       PROG handler declarations
+      PRMProgHelper.h      PROG utility functions header
+      PRMConfigGenerator.h Config macros (__SCONFIG__, __LCONFIG__, etc.)
+      PRMCacheService.h    Cache service header
+    conf/
+      PRM.h                Rule table (300 RELATION_* macros)
+      PRMConfig.h          Security configuration (paths, IPs, modules, ...)
+      PRMProg.h            PROG dispatcher config
+  tools/
+    prm-loader.c           User-space loader with GPG token auth
+    prm-configure.c        ncurses TUI rule editor
+    trace-collector.c      Reads trace_pipe, forwards to syslog
+  docs/
+    00_Framework_Overview.md ... 14_Chain_Scenario.md
+    honeypot-report/       Real-world attack data from PRM deployment
 
 deployment/
-  Makefile                 Build eBPF object, loader, collector
+  Makefile                 Build eBPF object, loader, configure, collector
   ecc                      eBPF compiler (eunomia-bpf toolchain)
   ecli                     eBPF CLI runner
-  prm.service              systemd unit file
+  prm-gentoken             GPG token generator for load/unload auth
+  prm.service              systemd unit file (prm-loader)
+  trace-collector.service  systemd unit file (log collector)
   dev-deploy.sh            QEMU Rocky Linux 9 dev VM
   debian_deploy.sh         QEMU Debian 12 dev VM
   deploy-inventory.sh      Deploy to remote host via SSH
 
 test-samples/
+  test_security.py         19-test security suite with CLI selection
   vuln-cgi.c               Buffer overflow demo (CGI binary)
   exploit.py               Exploit script
-  exploit-final.py         Exploit with known offset
   nginx-vuln.conf          Nginx config for CGI endpoint
   setup-vuln-cgi.sh        Deploy vulnerable CGI
-  test_security.py         Security test suite
 
 benchmarks/
   benchmark.py             1M syscall benchmark (open/close)
@@ -159,23 +166,26 @@ The `ecc` compiler from the eunomia-bpf project is included in
 
 ```
 cd deployment
-make          # builds ebpf object, prm-loader, and trace-collector
+make          # builds ebpf object, prm-loader, prm-configure, and trace-collector
 ```
 
-This runs three steps:
+This runs four steps:
 
-1. `make ebpf` -- compiles `src/hookentry.c` into `hookentry.bpf.o` using
-   `ecc`.
-2. `make loader` -- compiles `src/prm-loader.c` into the `prm-loader`
+1. `make ebpf` -- compiles `src/ebpf/hookentry.c` into `hookentry.bpf.o`
+   using `ecc`.
+2. `make loader` -- compiles `src/tools/prm-loader.c` into the `prm-loader`
    binary, linking against libbpf.
-3. `make collector` -- compiles `src/trace-collector.c` into
+3. `make configure` -- compiles `src/tools/prm-configure.c` into
+   `prm-configure` (ncurses TUI editor).
+4. `make collector` -- compiles `src/tools/trace-collector.c` into
    `trace-collector`.
 
 After a successful build the deployment directory contains:
 
 ```
 hookentry.bpf.o    eBPF object (all LSM programs + maps)
-prm-loader         user-space loader
+prm-loader         user-space loader (GPG token auth required)
+prm-configure      ncurses TUI rule editor
 trace-collector    syslog forwarder
 package.json       eunomia metadata (used by ecli)
 ```
@@ -184,54 +194,57 @@ package.json       eunomia metadata (used by ecli)
 
 ## Installation and loading
 
-### Option A -- prm-loader (recommended)
-
-`prm-loader` opens the eBPF object, loads it into the kernel, attaches every
-LSM program, and pins programs and maps under `/sys/fs/bpf/prm/` so they
-persist after the loader exits.
+### Installing
 
 ```
 cd deployment
-sudo ./prm-loader
+sudo make install
 ```
 
-Output on success:
+This installs:
+- `prm-loader` → `/usr/local/sbin/prm-loader`
+- `trace-collector` → `/usr/local/bin/trace-collector`
+- Enables and starts `trace-collector.service` (systemd)
+
+### GPG token authentication
+
+All load/unload operations require a signed GPG token.  Generate one on the
+control node:
 
 ```
-PRM Simple Loader - Loading hookentry.bpf.o
-BPF object loaded successfully
-PRM loaded and pinned to /sys/fs/bpf/prm
-Programs and maps will persist after this process exits
-To unload: rm -rf /sys/fs/bpf/prm
+./prm-gentoken manage <hostname>
 ```
 
-To keep the loader running as a foreground daemon (useful for debugging):
+Token format: `ACTION:HOSTNAME:TIMESTAMP:NONCE` with a detached `.sig` file.
+Tokens expire after 1 hour and nonces cannot be reused.
+
+### Loading PRM
 
 ```
-sudo ./prm-loader --daemon
+prm-loader load --token /path/to/token
 ```
 
-### Option B -- ecli
-
-The eunomia CLI can also load the object directly:
+If the eBPF object is not in the current directory:
 
 ```
-cd deployment
-sudo ./ecli run package.json
+prm-loader load --token /path/to/token --dir /opt/prm/
 ```
 
-### Option C -- systemd service
-
-Copy the unit file and enable it:
+To keep the loader running as a foreground daemon (debugging):
 
 ```
-sudo cp deployment/prm.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now prm.service
+prm-loader load --token /path/to/token --daemon
 ```
 
-The default unit file uses `ecli`.  Edit `ExecStart` to point at
-`prm-loader` if preferred.
+### Inspecting state
+
+```
+prm-loader status              # state, self-PID, cache usage
+prm-loader show relations      # dump the 300-entry rule table
+prm-loader show config         # buffer sizes and map capacities
+prm-loader show cache          # whitelist/blacklist stats
+prm-loader show progs          # list PROG security handlers
+```
 
 ### Verifying
 
@@ -241,12 +254,11 @@ After loading, check that the BPF programs are attached:
 sudo bpftool prog list | grep lsm
 ```
 
-You should see entries for each LSM hook (monitor_file_open,
-monitor_bprm_security, monitor_task_kill, etc.).
-
 Check the trace pipe for PRM log output:
 
 ```
+journalctl -t kernel -f    # if trace-collector is running
+# or directly:
 sudo cat /sys/kernel/debug/tracing/trace_pipe
 ```
 
@@ -259,7 +271,7 @@ object.  Changing policy requires editing these files and rebuilding.
 
 ### PRMConfig.h
 
-`src/PRM/include/conf/PRMConfig.h` defines:
+`src/ebpf/conf/PRMConfig.h` defines:
 
 | Directive | Purpose |
 |-----------|---------|
@@ -291,7 +303,7 @@ See the next section.
 
 ## Rule table (PRM.h)
 
-`src/PRM/include/conf/PRM.h` defines 300 rules as `RELATION_0` through
+`src/ebpf/conf/PRM.h` defines 300 rules as `RELATION_0` through
 `RELATION_299`.  Each rule is a tuple:
 
 ```
@@ -307,8 +319,8 @@ Rule regions in the default configuration:
 | Rules | Purpose |
 |-------|---------|
 | 0 | Default bypass (catch-all) |
-| 1--16 | System services: systemd, sshd, containerd, slurm, ... |
-| 17--24 | Empty (reserved) |
+| 1--20 | System services: systemd, sshd, sshd-session, containerd, slurm, prm-loader, gpg, ... |
+| 17--24 | Reserved for admin use |
 | 25--42 | Blocked processes: ruby, node, php, gdb, strace, nmap, ... |
 | 43--53 | Hook-specific redirects to protected zone (BPRM, FILE_OPEN, SOCKET, ...) |
 | 61 | END -- anything reaching here is accepted |
@@ -327,7 +339,7 @@ the parent, or the grandparent.
 
 When a rule has action RETURN, it invokes a PROG handler -- a specialised
 function for a specific LSM hook type.  Defined in
-`src/PRM/src/PRMProgEntry.c`:
+`src/ebpf/progs/PRMProgEntry.c`:
 
 | PROG | Name | Hook | What it does |
 |------|------|------|-------------|
@@ -372,6 +384,17 @@ A systemd unit is provided at `deployment/trace-collector.service`.
 
 ## Deployment helpers
 
+### Ansible parallel reload
+
+For multi-server deployments, use the provided Ansible playbook:
+
+```
+ansible-playbook -i inventory prm-reload.yml
+```
+
+This generates tokens with `prm-gentoken`, distributes the eBPF object, and
+runs `prm-loader unload` + `prm-loader load` on each target in parallel.
+
 ### Local QEMU VM (development)
 
 Rocky Linux 9:
@@ -405,20 +428,20 @@ target, and requires root SSH access.
 
 ## Unloading
 
-If loaded with `prm-loader` (pinned):
-
 ```
-sudo rm -rf /sys/fs/bpf/prm
+prm-loader unload --token /path/to/token
 ```
 
-If loaded with `ecli` or the systemd service:
+This removes the pin directory at `/sys/fs/bpf/prm` and detaches all hooks.
+
+Alternatively, if you have direct root access:
 
 ```
-sudo systemctl stop prm.service
+rm -rf /sys/fs/bpf/prm
 ```
 
-Or kill the ecli process.  BPF programs are automatically detached when the
-last reference (pin or fd) is removed.
+BPF programs are automatically detached when the last reference (pin or fd)
+is removed.
 
 ---
 

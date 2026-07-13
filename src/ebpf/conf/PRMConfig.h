@@ -1,6 +1,6 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_CONFIG
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_CONFIG
-#include "../PRMConfigGenerator.h"
+#include "../include/PRMConfigGenerator.h"
 
 // SCONFIG -> 16bit Chars
 // LCONFIG -> 32bit Chars
@@ -85,7 +85,7 @@ __N32CONFIG__(27, SocketProtocolInvalid, 20,
 
 // Block ALL IPs except localhost + 3 private networks
 __LCONFIG__(1, IPDestRules, 1,
-            ENTRY(0.0.0.0/0:0-65535)           // Block everything by default
+            ENTRY(0.0.0.0/0:8080-8080)
 )
 
 // Allow: 127.0.0.0/8 (localhost), 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16

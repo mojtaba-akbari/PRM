@@ -8,12 +8,12 @@ static int addLRUCache(struct UniqueKey * key){
         struct cache_record *crecord = cache_record_memory_allocate(&crecord_key, NULL);
         if (!crecord) {
             cache_record_memory_delete(&crecord_key);
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("*** Warning , Cache Record Heap ERROR ***\n"));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("ERROR: Cache memory allocation failed\n"));
             RET_REJECT
         }
         
 
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Adding to cache , Comes from Prog: Hook(%d)-PID(%d) {%d Direct Relation}} \n",key->hook, key->pid, key->crecord.direct_relation));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CACHE: Storing decision for PID %d (from security handler, rule #%d)\n",key->hook, key->pid, key->crecord.direct_relation));
 
         bpf_probe_read(crecord, sizeof(*crecord), &key->crecord);
         CLEAN_CACHE_RECORD(key)
@@ -22,7 +22,7 @@ static int addLRUCache(struct UniqueKey * key){
         cache_record_memory_delete(&crecord_key);
     }
     else{
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Adding to cache , Comes from None-Prog: Hook(%d)-PID(%d) {NON Direct Relation}} \n",key->hook, key->pid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CACHE: Storing decision for PID %d (direct rule match)\n",key->hook, key->pid));
         CLEAN_CACHE_RECORD(key)
         bpf_map_update_elem(&process_list, key, &key->crecord, BPF_ANY);
     }
@@ -41,11 +41,11 @@ static int checkLRUCache(struct hooks_context_t *hook_ctx){
         if(processTmpx){
             if(processTmpx->hookType == NONE_CELL || processTmpx->hookType == hook_ctx->key.hook){
                 if(crecord->is_valid_entries == 1){
-                    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Asking for Cache fingerprints check {pid(%d) tpid(%d) hook(%d)}\n", hook_ctx->key.pid, hook_ctx->key.tpid, hook_ctx->key.hook));
+                    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CACHE: Verifying cached fingerprint for PID %d\n", hook_ctx->key.pid, hook_ctx->key.tpid, hook_ctx->key.hook));
                     return checkCacheEntries(hook_ctx, crecord);
                 }
                 else {
-                    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Checked cache: Hook(%d)-PID(%d) {%d Prog} --- direct-relation %d} \n",hook_ctx->key.hook, hook_ctx->key.pid, hook_ctx->key.crecord.direct_relation));
+                    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CACHE: PID %d matched cached rule #%d\n",hook_ctx->key.hook, hook_ctx->key.pid, hook_ctx->key.crecord.direct_relation));
                     RET_ACCEPT
                 }
             }
@@ -53,7 +53,7 @@ static int checkLRUCache(struct hooks_context_t *hook_ctx){
         }
     }
     else{
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Checked cache: Hook(%d)-PID(%d) --- None-relation} \n",hook_ctx->key.hook, hook_ctx->key.pid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("CACHE: PID %d found in cache (no specific rule)\n",hook_ctx->key.hook, hook_ctx->key.pid));
         RET_ACCEPT
     }
 
@@ -67,10 +67,10 @@ static int checkCacheEntries(struct hooks_context_t *hook_ctx, struct cache_reco
 
     for(int i=0;i< MAX_CACHE_ENTRIES;i++){
         if(crecord->cache_entries[i].is_valid == 1 && hook_ctx->key.crecord.cache_entries[i].is_valid == 1) {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Checking fingerprint for PID(%d) Hook(%d) {offset(%d) %x ?= %x}\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("CACHE: Comparing fingerprint for PID %d (slot %d: %x vs %x)\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
             if(crecord->cache_entries[i].hash != hook_ctx->key.crecord.cache_entries[i].hash){
 
-                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("Miss-Matched fingerprint for PID(%d) Hook(%d) {offset(%d) %x != %x}\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("CACHE: Fingerprint mismatch for PID %d (slot %d: %x != %x), re-evaluating\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
                 RET_REJECT
             }
         }

@@ -1,10 +1,10 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_Verifier_H
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_Verifier_H
 
-#include "../include/conf/PRM.h"
-#include "../include/conf/PRMConfig.h"  
-#include "../include/PRMProgDispatcher.h"
-#include "../include/PRMFilters.h"
+#include "../conf/PRM.h"
+#include "../conf/PRMConfig.h"  
+#include "PRMProgDispatcher.h"
+#include "PRMFilters.h"
 
 // Macro to detect and skip kernel threads for performance optimization
 #define PF_KTHREAD 0x00200000

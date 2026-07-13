@@ -1,8 +1,8 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_CACHE_STRUCT
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_CACHE_STRUCT
 
-#include "../../include/baseheaders.h"
-#include "../../include/BTFFunctions.h"
+#include "baseheaders.h"
+#include "BTFFunctions.h"
 #include "PRMStructs.h"
 #include "PRMProgStructs.h"
 

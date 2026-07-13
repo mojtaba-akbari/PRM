@@ -1,7 +1,7 @@
 #ifndef FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_DISPATCHER
 #define FILTERING_SYSCALL_FRAMEWORK_PRM_PROG_DISPATCHER
 
-#include "conf/PRMProg.h"
+#include "../conf/PRMProg.h"
 #include "PRMProgStructs.h"
 
 enum DISPATCH_TYPE{

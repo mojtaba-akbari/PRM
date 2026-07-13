@@ -2,8 +2,8 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
-#include <PRM/include/PRMVerifier.h>
-#include <PRM/src/PRMVerifier.c>
+#include "include/PRMVerifier.h"
+#include "core/PRMVerifier.c"
 
 
 
@@ -31,6 +31,7 @@ int BPF_PROG(monitor_bpf, int cmd, union bpf_attr *attr, unsigned int size) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
     
     hook_ctx->key = UNIQUEKEY(pid_tgid,BPF);
     //kernelThreadCheck(hook_ctx);
@@ -48,6 +49,7 @@ int BPF_PROG(monitor_file_permission, struct file *file, int mask) {
     if (!hook_ctx) RET_ACCEPT
     
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,FILE_PERMISSION);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -64,6 +66,7 @@ int BPF_PROG(monitor_file_ioctl, struct file *file, unsigned int cmd) {
     if (!hook_ctx) RET_ACCEPT
     
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,FILE_IOCTL);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -80,6 +83,7 @@ int BPF_PROG(monitor_file_mprotect, struct vm_area_struct *vma, unsigned long re
     if (!hook_ctx) RET_ACCEPT
     
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,FILE_MPROTECT);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -101,6 +105,7 @@ int BPF_PROG(monitor_file_receive, struct file *file) {
     if (!hook_ctx) RET_ACCEPT
     
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,FILE_RECEIVE);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -131,6 +136,7 @@ int BPF_PROG(monitor_file_open, struct file *file) {
     if (!hook_ctx) RET_ACCEPT
     
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,FILE_OPEN);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -148,6 +154,7 @@ int BPF_PROG(monitor_sb_mount, const char *dev_name, struct path *path, const ch
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SB_MOUNT);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -164,6 +171,7 @@ int BPF_PROG(monitor_shm_alloc, struct shmid_kernel *shp) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SHM_ALLOC);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -181,6 +189,7 @@ int BPF_PROG(monitor_inode_permission, struct inode *inode, int mask){
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,INODE_PERMISSION);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -198,6 +207,7 @@ int BPF_PROG(monitor_inode_setattr, struct dentry *dentry, struct iattr *attr){
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,INODE_SETATTR);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -215,6 +225,7 @@ int BPF_PROG(monitor_inode_mkdir, struct inode *dir, struct dentry *dentry, umod
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,INODE_MKDIR);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -232,6 +243,7 @@ int BPF_PROG(monitor_inode_create, struct path *dir, struct dentry *dentry, int 
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,INODE_CREATE);
     hook_ctx->args.inode_create.dir=dir;
@@ -254,6 +266,7 @@ int BPF_PROG(monitor_syslog, int type) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SYSLOG);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -270,6 +283,7 @@ int BPF_PROG(monitor_ptrace) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_PTRACE);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -288,6 +302,7 @@ int BPF_PROG(monitor_bprm_security, struct linux_binprm *bprm) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,BPRM_SECURITY);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -321,6 +336,7 @@ int BPF_PROG(monitor_capget, struct task_struct *target, kernel_cap_t *effective
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SECURITY_CAPGET);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -337,6 +353,7 @@ int BPF_PROG(monitor_capabilities, const struct cred *cred, struct user_namespac
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
     
     hook_ctx->key = UNIQUEKEY(pid_tgid,CAPABLE);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -357,6 +374,7 @@ int BPF_PROG(monitor_socket_create, int family, int type, int protocol, int kern
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SOCKET_CREATE);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -373,6 +391,7 @@ int BPF_PROG(monitor_socket_connect, struct socket *sock, struct sockaddr *addre
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SOCKET_CONNECT);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -392,6 +411,7 @@ int BPF_PROG(monitor_spgid, struct task_struct *task, pid_t pgid) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_SETPGID);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -408,6 +428,7 @@ int BPF_PROG(monitor_gpid, struct task_struct *task) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_GETGID);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -424,6 +445,7 @@ int BPF_PROG(monitor_gsid, struct task_struct *task) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_GETSID);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -441,6 +463,7 @@ int BPF_PROG(monitor_prlimit, struct task_struct *task, unsigned int resource, s
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_PRLIMIT);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -457,6 +480,7 @@ int BPF_PROG(monitor_setprlimit,struct task_struct *task, unsigned int resource,
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_SETPRLIMIT);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -473,6 +497,7 @@ int BPF_PROG(monitor_task_kill, struct task_struct *task, struct kernel_siginfo 
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_KILL);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -493,6 +518,7 @@ int BPF_PROG(monitor_task_alloc, struct task_struct *task) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_ALLOC);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -509,6 +535,7 @@ int BPF_PROG(monitor_task_movememory, struct task_struct *task) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_MOVEMEMORY);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -525,6 +552,7 @@ int BPF_PROG(monitor_task_setioprio, struct task_struct *task, int ioprio) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_SETIOPRIO);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -541,6 +569,7 @@ int BPF_PROG(monitor_task_Xid, struct task_struct *task, const struct cred *old,
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
     hook_ctx->key = UNIQUEKEY(pid_tgid,TASK_FIX_SETUID);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
 
@@ -562,6 +591,7 @@ int BPF_PROG(handle_priv_esc, struct cred *new, const struct cred *old, int flag
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
     hook_ctx->key = UNIQUEKEY(pid_tgid,CRED_PREPARE);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
 
@@ -582,6 +612,7 @@ int BPF_PROG(monitor_socket_accept, struct socket *sock, struct socket *newsock)
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,SOCKET_ACCEPT);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
@@ -600,6 +631,7 @@ int BPF_PROG(monitor_kernel_module_request, char *kmod_name) {
     if (!hook_ctx) RET_ACCEPT
 
     hook_ctx->task = (struct task_struct *) bpf_get_current_task_btf();
+    hook_ctx->uid = bpf_get_current_uid_gid() & 0xFFFFFFFF;
 
     hook_ctx->key = UNIQUEKEY(pid_tgid,KERNEL_MODULE_REQUEST);
     if(KERNEL_HOOKS_BYPASS&kernelThreadCheck(hook_ctx)) RET_ACCEPT
