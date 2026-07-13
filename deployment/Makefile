@@ -36,10 +36,10 @@ loader:
 			-I$$KSRC \
 			-I$$KROOT/tools/include \
 			-I$$KROOT/tools/include/uapi \
-			$$LIBBPF -lelf -lz || exit 1; \
+			$$LIBBPF -lelf -lz -lncurses || exit 1; \
 	elif [ -f /usr/include/bpf/libbpf.h ]; then \
 		echo "Found libbpf in /usr/include/bpf/"; \
-		$(CC) $(LOADER_SRC) -o $(LOADER_BIN) -I/usr/include -L$$(dirname $$LIBBPF) -lbpf -lelf -lz || exit 1; \
+		$(CC) $(LOADER_SRC) -o $(LOADER_BIN) -I/usr/include -L$$(dirname $$LIBBPF) -lbpf -lelf -lz -lncurses || exit 1; \
 	else \
 		echo "ERROR: libbpf headers not found"; \
 		exit 1; \
