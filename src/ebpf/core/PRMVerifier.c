@@ -105,7 +105,7 @@ static int prm_loop_callback(__u32 i, struct prm_loop_ctx *ctx) {
             ctx->result = 1;
             return 1;
         }
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("ALLOWED: Process '%s' (child of '%s', grandchild of '%s') PID %d UID %d — decision cached\n",
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | NOTHING),bpf_printk("ALLOWED: Process '%s' (child of '%s', grandchild of '%s') PID %d UID %d — decision cached\n",
             ctx->comm_buf->_buff_, ctx->p_comm_buf->_buff_, ctx->grand_p_comm_buf->_buff_, ctx->hook_ctx->key.pid, ctx->hook_ctx->uid));
         ctx->hook_ctx->key.crecord.direct_relation = i;
         addLRUCache(&ctx->hook_ctx->key);
@@ -137,7 +137,7 @@ static int prm_loop_callback(__u32 i, struct prm_loop_ctx *ctx) {
         return 0; // continue
 
     case DEBUG:
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("DEBUG: Process '%s' (child of '%s', grandchild of '%s') PID %d — entered deep inspection zone\n",
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | NOTHING),bpf_printk("DEBUG: Process '%s' (child of '%s', grandchild of '%s') PID %d — entered deep inspection zone\n",
             ctx->comm_buf->_buff_, ctx->p_comm_buf->_buff_, ctx->grand_p_comm_buf->_buff_, ctx->hook_ctx->key.pid));
         return 0;
 
@@ -402,7 +402,7 @@ static int saveSelfPID(struct hooks_context_t * hook_ctx){
     if(value && value->pid == EMPTY && value->magic == EMPTY){
         struct SelfPID currentValue = {.pid=hook_ctx->key.pid,.magic=MAGIC_VALUE};
 
-        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("STARTUP: PRM registering itself as PID %d\n", hook_ctx->key.pid));
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | NOTHING),bpf_printk("STARTUP: PRM registering itself as PID %d\n", hook_ctx->key.pid));
         
         bpf_map_update_elem(&self_pids, &key, &currentValue, BPF_ANY);
 
@@ -410,11 +410,11 @@ static int saveSelfPID(struct hooks_context_t * hook_ctx){
         __u32 key = 0;
         prm_state = bpf_map_lookup_elem(&prm_state_map, &key);
         if (!prm_state) {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("STARTUP: PRM loading security rules (PID %d)\n", hook_ctx->key.pid));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | NOTHING),bpf_printk("STARTUP: PRM loading security rules (PID %d)\n", hook_ctx->key.pid));
             return Load_PRM();
         }
         else if (prm_state->prm_state == UNLOADED){
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER | NOTHING),bpf_printk("STARTUP: PRM was unloaded, reloading security rules (PID %d)\n", hook_ctx->key.pid));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | NOTHING),bpf_printk("STARTUP: PRM was unloaded, reloading security rules (PID %d)\n", hook_ctx->key.pid));
             return Load_PRM();
         }
 
@@ -435,10 +435,10 @@ static int saveSelfPID(struct hooks_context_t * hook_ctx){
         checkValidElemConfigSTR(comm, HookValidList, process_valid = true;)
         
         if (process_valid) {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("ALLOWED: Process '%s' is a trusted system service\n", comm));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("ALLOWED: Process '%s' is a trusted system service\n", comm));
             return 0;
         } else {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("BLOCKED: Process '%s' is not a trusted system service\n", comm));
+            FULLY_DEBUG(__DEBUG__,(NOTHING | LOWER),bpf_printk("BLOCKED: Process '%s' is not a trusted system service\n", comm));
             return -EPERM;
         }
     }

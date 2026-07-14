@@ -86,7 +86,7 @@ static int symbolicUIDFindClosestPattern(__u32 lineage_key) {
         }
     }
 
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("UID ancestors has been checked out and worstPattern %d , index %d\n", worstPattern, _index_));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("UID ancestors has been checked out and worstPattern %d , index %d\n", worstPattern, _index_));
 
     return worstPattern;
 }
@@ -165,8 +165,8 @@ static int lineageUIDAnalizer(struct task_struct * task, struct UniqueKey * ukey
     }
 
     for (int i = 0; i < MAX_ANCESTORS; i += 4) {
-        bpf_printk("Lineage[%d-%d]: %d %d %d %d", i, i+3, 
-                   lineage->val[i], lineage->val[i+1], lineage->val[i+2], lineage->val[i+3]);
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Lineage[%d-%d]: %d %d %d %d", i, i+3, 
+                   lineage->val[i], lineage->val[i+1], lineage->val[i+2], lineage->val[i+3]));
     }
 
     int result = symbolicUIDFindClosestPattern(lineage_key);
@@ -241,7 +241,7 @@ static int ip_in_subnet(__u32 target_ip, __u16 dst_port, const char *rule) {
 
     ;
 
-    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("SUBNET: %x, MASK: %x, TARGET: %x , PORT: %d %d", subnet_ip, mask, target_ip, port_start , port_end));
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("SUBNET: %x, MASK: %x, TARGET: %x , PORT: %d %d", subnet_ip, mask, target_ip, port_start , port_end));
 
     return ((target_ip & mask) == (subnet_ip & mask)) &&
            (dst_port >= port_start && dst_port <= port_end);

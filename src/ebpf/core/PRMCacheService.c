@@ -8,7 +8,7 @@ static int addLRUCache(struct UniqueKey * key){
         struct cache_record *crecord = cache_record_memory_allocate(&crecord_key, NULL);
         if (!crecord) {
             cache_record_memory_delete(&crecord_key);
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("ERROR: Cache memory allocation failed\n"));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("ERROR: Cache memory allocation failed\n"));
             RET_REJECT
         }
         
@@ -67,10 +67,10 @@ static int checkCacheEntries(struct hooks_context_t *hook_ctx, struct cache_reco
 
     for(int i=0;i< MAX_CACHE_ENTRIES;i++){
         if(crecord->cache_entries[i].is_valid == 1 && hook_ctx->key.crecord.cache_entries[i].is_valid == 1) {
-            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("CACHE: Comparing fingerprint for PID %d (slot %d: %x vs %x)\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("CACHE: Comparing fingerprint for PID %d (slot %d: %x vs %x)\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
             if(crecord->cache_entries[i].hash != hook_ctx->key.crecord.cache_entries[i].hash){
 
-                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL | LOWER),bpf_printk("CACHE: Fingerprint mismatch for PID %d (slot %d: %x != %x), re-evaluating\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
+                FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("CACHE: Fingerprint mismatch for PID %d (slot %d: %x != %x), re-evaluating\n", hook_ctx->key.pid, hook_ctx->key.hook, i, crecord->cache_entries[i].hash, hook_ctx->key.crecord.cache_entries[i].hash));
                 RET_REJECT
             }
         }

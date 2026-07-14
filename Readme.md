@@ -1,703 +1,153 @@
-# PRM -- Process Rule Management Framework
+# PRM — Process Rule Management Framework
 
-PRM is a Linux kernel security framework that makes access-control decisions
-based on process ancestry.  It hooks into the kernel via eBPF/LSM, inspects
-the calling process together with its parent and grandparent, and evaluates a
-300-entry rule table to ACCEPT, REJECT, REDIRECT, or hand off to specialised
-PROG handlers.  An LRU cache (2 024 entries, Jenkins hash) turns repeated
-identical syscalls into O(1) lookups.
+Kernel-level access control for Linux based on process ancestry.
+Hooks into LSM via eBPF, inspects the calling process + parent + grandparent,
+and evaluates a rule table to decide ACCEPT/REJECT/REDIRECT per syscall.
 
-The framework targets HPC and multi-tenant Linux environments where
-traditional MAC systems (SELinux, AppArmor, seccomp) lack the runtime context
-to distinguish a legitimate scientific job from an exploit that happens to
-carry the same credentials.
-
----
-
-## Table of contents
-
-1. [How it works](#how-it-works)
-2. [Project layout](#project-layout)
-3. [Requirements](#requirements)
-4. [Building](#building)
-5. [Installation and loading](#installation-and-loading)
-   - [GPG key setup](#gpg-key-setup-one-time)
-   - [Token generation and verification](#token-generation-and-verification-flow)
-   - [Loading PRM](#loading-prm)
-   - [Unloading PRM](#unloading-prm)
-   - [Multi-server reload](#multi-server-reload-workflow)
-   - [Security model](#security-model-summary)
-6. [Configuration](#configuration)
-7. [Rule table (PRM.h)](#rule-table-prmh)
-8. [PROG handlers](#prog-handlers)
-9. [Trace collector](#trace-collector)
-10. [Deployment helpers](#deployment-helpers)
-11. [Known limitations](#known-limitations)
-12. [License](#license)
-
----
-
-## How it works
-
-Every syscall that reaches an LSM hook passes through five layers:
-
-```
-syscall
-  |
-  v
-[1] Cache lookup  -----> hit? return cached decision
-  |
-  v
-[2] Fast-decision filters  -----> kernel thread bypass, self-PID skip
-  |
-  v
-[3] Process ancestry extraction  -----> (process, parent, grandparent)
-  |
-  v
-[4] Rule table walk (300 entries)
-      |
-      +-- ACCEPT   -> allow
-      +-- REJECT   -> deny
-      +-- REDIRECT -> jump to another rule index
-      +-- RETURN   -> invoke a PROG handler (see below)
-      +-- BYPASS   -> skip with no decision
-      +-- DEBUG    -> log and continue
-      +-- END      -> stop evaluation, accept
-  |
-  v
-[5] Default policy  -----> accept (fail-open with logging)
-```
-
-Ancestry is extracted from `task_struct` at runtime: the current process
-name, its parent, and its grandparent.  Rules can match on any combination
-using exact names, wildcards (`PREFIX_NOCARE`), symmetric matching (the `|`
-prefix matches the name in any of the three positions), or invalid-binary
-detection (`PREFIX_INVALID_BINARY` matches processes whose executable lives
-outside trusted system directories).
-
-UID transition analysis runs a sliding-window pattern matcher over the
-ancestry chain against 19 pre-trained attack vectors, producing a severity
-score used by several PROG handlers to block privilege escalation.
-
----
-
-## Project layout
-
-```
-src/
-  ebpf/
-    hookentry.c            LSM hook entry points (30+ hooks)
-    core/
-      PRMVerifier.c        Rule matching, ancestry extraction, cache
-      PRMFilters.c         Kernel-thread bypass, self-PID detection
-      PRMStructs.c         Map operations, rule loading
-      PRMCacheService.c    LRU cache implementation
-      PRMProgDispatcher.c  PROG dispatch switch
-    progs/
-      PRMProgEntry.c       All PROG handler implementations
-      PRMProgHelper.c      Shared PROG utilities (IP/CIDR matching, etc.)
-    include/
-      baseheaders.h        Buffer sizes, constants
-      BTFFunctions.h       String helpers (strcmp_forceS1, etc.)
-      PRMVerifier.h        Verifier header
-      PRMFilters.h         Fast-decision filters header
-      PRMStructs.h         Data structures, BPF maps
-      PRMProgDispatcher.h  PROG dispatch logic
-      PRMProgEntry.h       PROG handler declarations
-      PRMProgHelper.h      PROG utility functions header
-      PRMConfigGenerator.h Config macros (__SCONFIG__, __LCONFIG__, etc.)
-      PRMCacheService.h    Cache service header
-    conf/
-      PRM.h                Rule table (300 RELATION_* macros)
-      PRMConfig.h          Security configuration (paths, IPs, modules, ...)
-      PRMProg.h            PROG dispatcher config
-  tools/
-    prm-loader.c           User-space loader with GPG token auth
-    prm-configure.c        ncurses TUI rule editor
-    trace-collector.c      Reads trace_pipe, forwards to syslog
-  docs/
-    00_Framework_Overview.md ... 14_Chain_Scenario.md
-    honeypot-report/       Real-world attack data from PRM deployment
-
-deployment/
-  Makefile                 Build eBPF object, loader, configure, collector
-  ecc                      eBPF compiler (eunomia-bpf toolchain)
-  ecli                     eBPF CLI runner
-  prm-gentoken             GPG token generator for load/unload auth
-  prm.service              systemd unit file (prm-loader)
-  trace-collector.service  systemd unit file (log collector)
-  dev-deploy.sh            QEMU Rocky Linux 9 dev VM
-  debian_deploy.sh         QEMU Debian 12 dev VM
-  deploy-inventory.sh      Deploy to remote host via SSH
-
-test-samples/
-  test_security.py         19-test security suite with CLI selection
-  vuln-cgi.c               Buffer overflow demo (CGI binary)
-  exploit.py               Exploit script
-  nginx-vuln.conf          Nginx config for CGI endpoint
-  setup-vuln-cgi.sh        Deploy vulnerable CGI
-
-benchmarks/
-  benchmark.py             1M syscall benchmark (open/close)
-  run_comparison.sh        PRM vs AppArmor comparison
-  ...
-```
-
----
+Built for HPC and multi-tenant environments where SELinux/AppArmor/seccomp
+don't have enough runtime context to tell a legit job from an exploit
+running under the same credentials.
 
 ## Requirements
 
-Kernel:
-- Linux >= 5.15 with BPF LSM enabled (`CONFIG_BPF_LSM=y`)
-- BTF support (`CONFIG_DEBUG_INFO_BTF=y`)
-- The kernel boot parameter `lsm=...,bpf` must include `bpf`
-
-Packages (RHEL/Rocky/Alma):
-```
-clang llvm libbpf bpftool elfutils-libelf-devel gcc make kernel-devel
-```
-
-Packages (Debian/Ubuntu):
-```
-clang llvm libbpf-dev bpftool libelf-dev gcc make linux-headers-$(uname -r)
-```
-
-The `ecc` compiler from the eunomia-bpf project is included in
-`deployment/ecc`.  It produces the `hookentry.bpf.o` object file.
-
----
+- Linux >= 5.15, `CONFIG_BPF_LSM=y`, `CONFIG_DEBUG_INFO_BTF=y`
+- Boot param: `lsm=...,bpf`
+- RHEL/Rocky: `clang llvm libbpf bpftool elfutils-libelf-devel gcc make kernel-devel`
+- Debian/Ubuntu: `clang llvm libbpf-dev bpftool libelf-dev gcc make linux-headers-$(uname -r)`
 
 ## Building
 
 ```
 cd deployment
-make          # builds ebpf object, prm-loader, prm-configure, and trace-collector
+make
 ```
 
-This runs four steps:
+Produces: `hookentry.bpf.o`, `prm-loader`, `prm-configure`, `trace-collector`
 
-1. `make ebpf` -- compiles `src/ebpf/hookentry.c` into `hookentry.bpf.o`
-   using `ecc`.
-2. `make loader` -- compiles `src/tools/prm-loader.c` into the `prm-loader`
-   binary, linking against libbpf.
-3. `make configure` -- compiles `src/tools/prm-configure.c` into
-   `prm-configure` (ncurses TUI editor).
-4. `make collector` -- compiles `src/tools/trace-collector.c` into
-   `trace-collector`.
-
-After a successful build the deployment directory contains:
-
-```
-hookentry.bpf.o    eBPF object (all LSM programs + maps)
-prm-loader         user-space loader (GPG token auth required)
-prm-configure      ncurses TUI rule editor
-trace-collector    syslog forwarder
-package.json       eunomia metadata (used by ecli)
-```
-
----
-
-## Installation and loading
-
-### Installing
+## Installation
 
 ```
 cd deployment
 sudo make install
 ```
 
-This installs:
-- `prm-loader` → `/usr/local/sbin/prm-loader`
-- `trace-collector` → `/usr/local/bin/trace-collector`
-- Enables and starts `trace-collector.service` (systemd)
+Installs `prm-loader` to `/usr/local/sbin/`, `trace-collector` to `/usr/local/bin/`,
+enables `trace-collector.service`.
 
----
+## Usage
 
-### GPG key setup (one-time)
-
-PRM uses GPG signatures to authenticate load/unload operations.  The admin
-generates a keypair once, and distributes the public key to all target nodes.
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        ONE-TIME KEY SETUP                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  CONTROL NODE (admin workstation)                                       │
-│  ─────────────────────────────────                                      │
-│                                                                         │
-│  1. Generate GPG keypair:                                               │
-│     $ gpg --full-generate-key                                           │
-│       → Real name: PRM Admin                                            │
-│       → Email: prm-admin@gwdg.de                                        │
-│       → Key type: RSA 4096                                              │
-│                                                                         │
-│  2. Export public key:                                                  │
-│     $ gpg --export --armor prm-admin@gwdg.de > prm-admin.pub            │
-│                                                                         │
-│                          │                                              │
-│                          │ scp / ansible                                │
-│                          ▼                                              │
-│                                                                         │
-│  TARGET NODES (servers running PRM)                                     │
-│  ──────────────────────────────────                                     │
-│                                                                         │
-│  3. Import public key:                                                  │
-│     $ gpg --import prm-admin.pub                                        │
-│                                                                         │
-│  Result:                                                                │
-│    • Control node holds PRIVATE key (signs tokens)                      │
-│    • Target nodes hold PUBLIC key (verify signatures)                   │
-│    • Private key NEVER leaves the control node                          │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Token generation and verification flow
-
-Every load/unload requires a fresh, signed, single-use token.  This prevents
-unauthorized loading even if an attacker gains root on a target node.
-
-```
-┌──────────────────────┐                        ┌──────────────────────┐
-│    CONTROL NODE      │                        │    TARGET NODE       │
-│  (admin workstation) │                        │  (server running PRM)│
-└──────────┬───────────┘                        └──────────┬───────────┘
-           │                                               │
-           │  1. Generate token                            │
-           │     $ prm-gentoken manage node-01             │
-           │                                               │
-           │     Creates:                                  │
-           │       /tmp/prm-token-node-01                  │
-           │       Content: manage:node-01:1719500000:a3f… │
-           │                                               │
-           │  2. Sign with GPG private key                 │
-           │     → /tmp/prm-token-node-01.sig              │
-           │                                               │
-           │  3. Transfer token + signature                │
-           │─────────────────scp──────────────────────────▶│
-           │                                               │
-           │  4. Execute loader                            │
-           │─────────────────ssh──────────────────────────▶│
-           │     prm-loader load --token /tmp/prm-token-…  │
-           │                                               │
-           │                                    ┌──────────┴──────────┐
-           │                                    │  VERIFICATION:      │
-           │                                    │  ✓ GPG sig valid?   │
-           │                                    │  ✓ Action matches?  │
-           │                                    │  ✓ Hostname matches?│
-           │                                    │  ✓ Age < 1 hour?    │
-           │                                    │  ✓ Nonce not reused?│
-           │                                    └──────────┬──────────┘
-           │                                               │
-           │                                    All pass → load eBPF
-           │                                    Any fail → REJECTED
-           │                                               │
-           │◀──────────── result ──────────────────────────│
-           │                                               │
-```
-
-**Token format:**
-
-```
- ACTION : HOSTNAME : TIMESTAMP : NONCE
-   │         │          │          │
-   │         │          │          └── 32-char random hex (replay protection)
-   │         │          └───────────── Unix epoch seconds (1-hour expiry)
-   │         └──────────────────────── Must match target's hostname
-   └────────────────────────────────── load | unload | manage (wildcard)
-```
-
-**Why this works:**
-- Token is bound to a specific host → stolen token can't be used elsewhere
-- Token expires in 1 hour → narrow attack window
-- Nonce is recorded after use → replay attacks impossible
-- GPG signature → only the holder of the private key can generate valid tokens
-- `manage` action → single token works for both unload + load (reload scenario)
-
----
-
-### Loading PRM
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          LOAD SEQUENCE                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  $ prm-loader load --token /tmp/prm-token-node-01 --dir /opt/prm/       │
-│                                                                         │
-│  ┌─────────────────┐                                                    │
-│  │ Verify GPG token│──── FAIL ──→ "TOKEN REJECTED" (exit 1)             │
-│  └────────┬────────┘                                                    │
-│           │ PASS                                                        │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ Open .bpf.o     │──── FAIL ──→ "Failed to open BPF object"           │
-│  └────────┬────────┘                                                    │
-│           │                                                             │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ Load into kernel│     BPF verifier checks all programs               │
-│  └────────┬────────┘                                                    │
-│           │                                                             │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ Attach LSM hooks│     30+ hooks (file_open, socket_connect, ...)     │
-│  └────────┬────────┘                                                    │
-│           │                                                             │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ Pin to bpffs    │     /sys/fs/bpf/prm/{programs, maps, links}        │
-│  └────────┬────────┘                                                    │
-│           │                                                             │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ EXIT            │     Process exits. eBPF stays in kernel.           │
-│  └─────────────────┘     No user-space process remains.                 │
-│                                                                         │
-│  Result:                                                                │
-│    • All syscalls now pass through PRM rule engine                      │
-│    • ps aux | grep prm → nothing (stealth)                              │
-│    • bpftool prog list | grep lsm → 30+ programs attached              │
-│    • /sys/fs/bpf/prm/ → pinned programs and maps persist                │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+Loading and unloading requires a GPG-signed token (see `src/docs/15_Token_Auth_And_Deployment.md`).
 
 ```bash
-# Basic (hookentry.bpf.o in current directory):
-prm-loader load --token /tmp/prm-token-myhost
+# Load
+prm-loader load --token /tmp/prm-token-HOSTNAME --dir /path/to/bpf/
 
-# Specify object directory:
-prm-loader load --token /tmp/prm-token-myhost --dir /opt/prm/
+# Unload
+prm-loader unload --token /tmp/prm-token-HOSTNAME
 
-# Keep running (for debugging):
-prm-loader load --token /tmp/prm-token-myhost --daemon
+# Status
+prm-loader status
+prm-loader show relations
+prm-loader show config
+prm-loader show cache
+prm-loader show progs
 ```
 
----
-
-### Unloading PRM
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         UNLOAD SEQUENCE                                  │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  $ prm-loader unload --token /tmp/prm-token-node-01                     │
-│                                                                         │
-│  ┌─────────────────┐                                                    │
-│  │ Verify GPG token│──── FAIL ──→ "TOKEN REJECTED" (exit 1)             │
-│  └────────┬────────┘                                                    │
-│           │ PASS                                                        │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ rm -rf          │     Removes /sys/fs/bpf/prm/                       │
-│  │ /sys/fs/bpf/prm │     Kernel auto-detaches all LSM hooks             │
-│  └────────┬────────┘     when last pin reference is removed             │
-│           │                                                             │
-│           ▼                                                             │
-│  ┌─────────────────┐                                                    │
-│  │ DONE            │     System returns to unprotected state            │
-│  └─────────────────┘                                                    │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-### Multi-server reload workflow
-
-Typical production scenario: rebuild config, reload across all nodes.
-
-```
-┌──────────────┐         ┌──────────┐  ┌──────────┐  ┌──────────┐
-│ Control Node │         │ node-01  │  │ node-02  │  │ node-03  │
-└──────┬───────┘         └────┬─────┘  └────┬─────┘  └────┬─────┘
-       │                      │             │             │
-       │  1. Edit PRMConfig.h / PRM.h                     │
-       │  2. make ebpf (rebuild hookentry.bpf.o)          │
-       │  3. prm-gentoken manage node-01                  │
-       │     prm-gentoken manage node-02                  │
-       │     prm-gentoken manage node-03                  │
-       │                      │             │             │
-       │──── scp .bpf.o ─────▶│             │             │
-       │──── scp .bpf.o ──────────────────▶│             │
-       │──── scp .bpf.o ─────────────────────────────────▶│
-       │──── scp tokens ─────▶│             │             │
-       │──── scp tokens ──────────────────▶│             │
-       │──── scp tokens ─────────────────────────────────▶│
-       │                      │             │             │
-       │── ssh: unload ──────▶│             │             │
-       │── ssh: unload ───────────────────▶│             │
-       │── ssh: unload ──────────────────────────────────▶│
-       │                      │             │             │
-       │── ssh: load ────────▶│             │             │
-       │── ssh: load ─────────────────────▶│             │
-       │── ssh: load ────────────────────────────────────▶│
-       │                      │             │             │
-       ▼                      ▼             ▼             ▼
-  All nodes running new config (< 30 seconds total)
-```
-
-Automated with Ansible: `ansible-playbook -i inventory prm-reload.yml`
-
----
-
-### Inspecting state
-
-```bash
-prm-loader status              # state, self-PID, hook count, cache usage
-prm-loader show relations      # dump non-empty rules from the 300-entry table
-prm-loader show config         # buffer sizes and map capacities
-prm-loader show cache          # whitelist/blacklist entry counts per hook
-prm-loader show progs          # list PROG security handlers
-```
-
-### Verifying
-
-After loading, check that the BPF programs are attached:
-
-```
-sudo bpftool prog list | grep lsm
-```
-
-Check the trace pipe for PRM log output:
-
-```
-journalctl -t kernel -f    # if trace-collector is running
-# or directly:
-sudo cat /sys/kernel/debug/tracing/trace_pipe
-```
-
----
-
-### Security model summary
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    WHY THIS IS SECURE                                    │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Attack: "I got root on a target node, can I unload PRM?"               │
-│                                                                         │
-│  ✗ sudo prm-loader unload                                               │
-│    → sudo blocked (passwd in forbidden file list)                       │
-│                                                                         │
-│  ✗ prm-loader unload --token (forged token)                             │
-│    → GPG signature check fails (no private key on target)               │
-│                                                                         │
-│  ✗ rm -rf /sys/fs/bpf/prm                                              │
-│    → lsm/bpf hook blocks bpf() syscall from unauthorized PIDs           │
-│                                                                         │
-│  ✗ Write to BPF maps directly                                           │
-│    → Same lsm/bpf hook: only PRM's own PID can call bpf()              │
-│                                                                         │
-│  ✗ Kill PRM process                                                     │
-│    → No process to kill (loader already exited)                         │
-│                                                                         │
-│  ✗ SUID binary to escalate                                              │
-│    → taskFixSetUIDCheck (PROG #11) blocks UID transitions               │
-│                                                                         │
-│  ✓ Only way: SSH as root from control node with valid GPG token         │
-│    → Requires physical access to admin's GPG private key                │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
+After loading, the loader exits. The eBPF programs stay pinned in the kernel
+at `/sys/fs/bpf/prm/` — no user-space daemon to kill.
 
 ## Configuration
 
-All security policy lives in two header files that are compiled into the eBPF
-object.  Changing policy requires editing these files and rebuilding.
+All policy is compiled into the eBPF object. Two files:
 
-### PRMConfig.h
+- `src/ebpf/conf/PRMConfig.h` — paths, IPs, UIDs, blocked files, modules, etc.
+- `src/ebpf/conf/PRM.h` — 300-entry rule table (process ancestry matching)
 
-`src/ebpf/conf/PRMConfig.h` defines:
+Change policy → rebuild → redeploy.
 
-| Directive | Purpose |
-|-----------|---------|
-| SafeUID | UIDs that bypass certain checks |
-| UnSafeGID | GIDs subject to stricter rules |
-| BinaryHomeDirectory | Trusted system directories (usr, bin, sbin, ...) |
-| ValidateDirectory | Directories where file operations are allowed |
-| BlockedPaths | Paths always denied (proc/kcore, etc.) |
-| SocketProtocolInvalid | Blocked socket families (AF_PACKET, AF_IB, ...) |
-| IPDestRules / IPSrcRules | Network allow/deny by CIDR |
-| BPRMDestination | Paths from which execve is blocked (/tmp/, /dev/shm/, ...) |
-| BPRMInterpreter | Blocked interpreter binaries |
-| MMAPFileAttached | Directories denied for executable mmap |
-| OpenFileDeny | File names always blocked (shadow, passwd, ...) |
-| OpenFileDenyAggressivly | Stricter file deny list (blocks even for system reads) |
-| ModuleDeny | Kernel module prefixes blocked from loading |
-
-Config macros:
-
-- `__SCONFIG__` -- short string array (MAX_STR = 16 chars per entry)
-- `__LCONFIG__` -- long string array (LARGE_STR = 32 chars)
-- `__N32CONFIG__` -- 32-bit integer array
-
-### PRM.h (rule table)
-
-See the next section.
-
----
-
-## Rule table (PRM.h)
-
-`src/ebpf/conf/PRM.h` defines 300 rules as `RELATION_0` through
-`RELATION_299`.  Each rule is a tuple:
+## Project Layout
 
 ```
-process, parent, grandparent, ACTION, redirect_index, protect_zone, hook_type
+src/
+  ebpf/
+    hookentry.c              30+ LSM hook entry points
+    core/                    verifier, cache, filters, dispatcher
+    progs/
+      PRMProgEntry.c         aggregator (includes all modules)
+      modules/               individual security handlers (12 modules)
+      PRMProgHelper.c        shared utilities
+    include/                 headers, macros, data structures
+    conf/                    PRM.h (rules), PRMConfig.h (policy), PRMProg.h (slots)
+  tools/
+    prm-loader.c             loader with GPG token auth
+    prm-configure.c          ncurses rule editor
+    trace-collector.c        trace_pipe → syslog forwarder
+  docs/                      detailed documentation (15 chapters + paper)
+
+deployment/
+  Makefile                   build targets
+  ecc                        eBPF compiler (eunomia-bpf)
+  prm-gentoken               token generator
+  prm.service                systemd unit (loader)
+  trace-collector.service    systemd unit (collector)
+  dev-deploy.sh              Rocky Linux QEMU dev VM
+  debian_deploy.sh           Debian 12 QEMU dev VM
+  deploy-inventory.sh        remote deploy via SSH
+
+test-samples/                security test suite, vuln demos
+benchmarks/                  syscall benchmarks, AppArmor comparison
 ```
 
-The verifier walks rules top-to-bottom.  First match wins (for ACCEPT,
-REJECT, END).  REDIRECT jumps to another index.  RETURN invokes a PROG
-handler.
+## PROG Handlers
 
-Rule regions in the default configuration:
+Security handlers invoked by RETURN rules in the rule table:
 
-| Rules | Purpose |
-|-------|---------|
-| 0 | Default bypass (catch-all) |
-| 1--20 | System services: systemd, sshd, sshd-session, containerd, slurm, prm-loader, gpg, ... |
-| 17--24 | Reserved for admin use |
-| 25--42 | Blocked processes: ruby, node, php, gdb, strace, nmap, ... |
-| 43--53 | Hook-specific redirects to protected zone (BPRM, FILE_OPEN, SOCKET, ...) |
-| 61 | END -- anything reaching here is accepted |
-| 62 | Protected zone entry (DEBUG) |
-| 63--96 | Symmetric RETURN rules for known binaries (bash, python, sshd, ...) |
-| 97 | End-of-pattern redirect (loop = accept) |
-| 290--292 | TASK_KILL signal handling zone |
+| # | Handler | Hook | Purpose |
+|---|---------|------|---------|
+| 1 | signalKillTracer | TASK_KILL | protect PRM process from signals |
+| 2 | denyWriteOutside | INODE_CREATE | block writes outside allowed dirs |
+| 3 | denySocketEndHost | SOCKET_CONNECT | block outbound to non-private IPs |
+| 4 | bprmSecurityCheck | BPRM_SECURITY | block exec from /tmp, /dev/shm |
+| 5 | memoryProtect | FILE_MPROTECT | block mprotect(EXEC) on untrusted mem |
+| 6 | denyIncomeSocket | SOCKET_ACCEPT | filter inbound by source IP |
+| 7 | denyFileOpen | FILE_OPEN | restrict file access by path/name |
+| 8 | denyLoadModule | KERNEL_MODULE | block dangerous kernel modules |
+| 9 | credPrepareCheck | CRED_PREPARE | block UID/GID escalation to root |
+| 10 | capableCheck | CAPABLE | block dangerous capabilities |
+| 11 | taskFixSetUIDCheck | TASK_FIX_SETUID | block setuid exploitation |
 
-Symmetric rules (prefixed with `|`) match the process name in any ancestry
-position.  For example `|bash` matches whether bash is the current process,
-the parent, or the grandparent.
+## Development VMs
 
----
+```bash
+# Rocky Linux 9 (port 2222)
+cd deployment && ./dev-deploy.sh
 
-## PROG handlers
-
-When a rule has action RETURN, it invokes a PROG handler -- a specialised
-function for a specific LSM hook type.  Defined in
-`src/ebpf/progs/PRMProgEntry.c`:
-
-| PROG | Name | Hook | What it does |
-|------|------|------|-------------|
-| 0 | test | -- | Always accept (placeholder) |
-| 1 | signalKillTracer | TASK_KILL | Prevents killing the PRM process |
-| 2 | denyWriteOutSideOfValidDirectories | INODE_CREATE | Blocks file creation outside allowed dirs |
-| 3 | denyMakeSocketToEndHost | SOCKET_CONNECT | Blocks outbound connections to non-private IPs |
-| 4 | bprmSecurityCheck | BPRM_SECURITY | Blocks execve from /tmp, /dev/shm, etc. |
-| 5 | memoryProtectCheck | FILE_MPROTECT | Blocks mprotect(EXEC) on anonymous/untrusted memory |
-| 6 | denyIncomeSocket | SOCKET_ACCEPT | Filters incoming connections by source IP |
-| 7 | denyFileOpen | FILE_OPEN | Restricts file access by directory and name |
-| 8 | denyLoadModule | KERNEL_MODULE_REQUEST | Blocks loading of dangerous kernel modules |
-| 9 | credPrepareCheck | CRED_PREPARE | Blocks UID/GID escalation to root |
-| 10 | capableCheck | CAPABLE | Blocks dangerous capabilities for non-root |
-| 11 | taskFixSetUIDCheck | TASK_FIX_SETUID | Blocks setuid exploitation |
-
-Each PROG has two functions: the enforcement function (`_prog`) and a
-fingerprint function (`_fingerprint`) that computes cache-key parameters via
-`FLAG_FOR_HASH`.
-
----
-
-## Trace collector
-
-`trace-collector` reads `/sys/kernel/debug/tracing/trace_pipe` and forwards
-every line to syslog.  It disguises its process name as `kworker/u8:3` to
-avoid being targeted by attackers.
-
-```
-sudo ./trace-collector &
+# Debian 12 (port 2223)
+cd deployment && ./debian_deploy.sh
 ```
 
-Logs appear in the system journal:
+## Documentation
 
-```
-journalctl -t kernel -f
-```
+Full docs in `src/docs/`:
+- Framework internals (verifier, cache, filters, dispatcher)
+- Rule table syntax and examples
+- UID ancestry analysis
+- Token authentication and deployment workflows
+- Honeypot attack reports
+- Academic paper
 
-A systemd unit is provided at `deployment/trace-collector.service`.
+## Known Limitations
 
----
+- Policy changes require recompilation (no runtime reload)
+- Rule table fixed at 300 entries
+- Ancestry depth: 3 levels (process, parent, grandparent)
+- Process names truncated at 15 chars (kernel `comm` limit)
+- eBPF verifier limits constrain PROG handler complexity
 
-## Deployment helpers
+## Author
 
-### Ansible parallel reload
-
-For multi-server deployments, use the provided Ansible playbook:
-
-```
-ansible-playbook -i inventory prm-reload.yml
-```
-
-This generates tokens with `prm-gentoken`, distributes the eBPF object, and
-runs `prm-loader unload` + `prm-loader load` on each target in parallel.
-
-### Local QEMU VM (development)
-
-Rocky Linux 9:
-```
-cd deployment
-./dev-deploy.sh
-ssh -p 2222 rocker@localhost
-```
-
-Debian 12:
-```
-cd deployment
-./debian_deploy.sh
-ssh -p 2223 debian@localhost
-```
-
-Both scripts download a cloud image, create a cloud-init seed with the
-required packages, launch QEMU with KVM, and scp the project into the VM.
-
-### Remote host
-
-```
-cd deployment
-./deploy-inventory.sh <IP>
-```
-
-This installs dependencies via dnf, copies the project to `~/PRM/` on the
-target, and requires root SSH access.
-
----
-
-## Unloading
-
-See [Unloading PRM](#unloading-prm) in the loading section above.
-
----
-
-## Known limitations
-
-- Policy changes require recompilation.  There is no runtime policy reload.
-- The rule table is fixed at 300 entries.
-- Ancestry depth is limited to 3 levels (process, parent, grandparent).
-- String comparisons are bounded by MAX_STR (16 chars); process names longer
-  than 15 characters are truncated (this is a kernel `comm` limitation).
-- The eBPF verifier imposes loop and instruction limits that constrain the
-  complexity of PROG handlers.
-
----
-
-## Authors
-
-Mojtaba Akbari (Mojjjak)  
-GWDG -- Georg-August-Universitaet Goettingen  
-mojtaba.akbari@gwdg.de  
-mojtaba.akbari.sec@gmail.com
-
----
+Mojtaba Akbari — GWDG, Georg-August-Universität Göttingen
 
 ## License
 
-GPL (required for eBPF programs that use GPL-only BPF helpers).
+GPL

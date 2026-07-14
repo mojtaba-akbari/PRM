@@ -519,16 +519,19 @@ static int cmd_show_cache(void)
     fd = open_pinned_map("blacklist");
     if (fd >= 0) {
         struct unique_key key={0}, prev={0};
-        int total = 0, first = 1;
+        int total = 0, hooks[34] = {0}, first = 1;
         while (1) {
             int ret = first ? bpf_map_get_next_key(fd, NULL, &key)
                            : bpf_map_get_next_key(fd, &prev, &key);
             first = 0;
             if (ret != 0) break;
             total++;
+            if (key.hook < 34) hooks[key.hook]++;
             prev = key;
         }
         printf("\nBlacklist: %d / 2048 entries\n", total);
+        for (int i = 0; i < 34; i++)
+            if (hooks[i] > 0) printf("  %-24s %d\n", safe_hook(i), hooks[i]);
         close(fd);
     }
     return 0;

@@ -239,10 +239,11 @@ __SCONFIG__(6, ModuleDeny, 15,
 )
 
 // Allow BackBone Service binaries
-__SCONFIG__(6, HookValidList, 3,
+__SCONFIG__(6, HookValidList, 4,
             ENTRY(runc),                       // Docker/nginx container
             ENTRY(containerd),                 // Containerd for docker
-            ENTRY(systemd)                     // Systemd for SSH
+            ENTRY(systemd),                     // Systemd for SSH
+            ENTRY(prm-loader)                  // Mojjjak , i put it here because i need to get status , if you do not need it remove it !
 )
 
 

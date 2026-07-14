@@ -29,7 +29,7 @@ static __u32 jenkinsHash(__u32 a, __u32 b, __u32 c) {
 }
 
 static int init_relation_map() {
-    bpf_printk("Preparing PRM Relation Map...");
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("Preparing PRM Relation Map..."));
     __u32 _safeCounter_=0;
 
     struct process_relation *processTmpx;
@@ -41,7 +41,7 @@ static int init_relation_map() {
         
         if(processTmpx->process[0]=='\0' || processTmpx->parent[0]=='\0' || processTmpx->grandparent[0]=='\0')
         {
-            bpf_printk("Role#%d Have been found fully EMPTY",_safeCounter_);
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Role#%d Have been found fully EMPTY",_safeCounter_));
             processTmpx = & _prelation_empty_;
         }
         else{
@@ -68,7 +68,7 @@ static int init_relation_map() {
             processTmp_with_hash.process_hash = 0;
             processTmp_with_hash.parent_hash = 0;
             processTmp_with_hash.grandparent_hash = 0;
-            bpf_printk("Role#%d SYMMETRIC: %s", _safeCounter_, &processTmp_with_hash.process[1]);
+            FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Role#%d SYMMETRIC: %s", _safeCounter_, &processTmp_with_hash.process[1]));
         } else {
             processTmp_with_hash.is_symmetric = 0;
             processTmp_with_hash.symmetric_hash = 0;
@@ -95,8 +95,8 @@ static int init_relation_map() {
             }
         }
         
-        bpf_printk("Role Number #%d {(process=%s),(parent=%s),(grand=%s),(hookType=%d),(action=%d),(redirectIndex=%d),(protectZone=%d)} Loaded Up",_safeCounter_,processTmp_with_hash.process,
-                        processTmp_with_hash.parent,processTmp_with_hash.grandparent,processTmp_with_hash.hookType,processTmp_with_hash.action,processTmp_with_hash.redirectIndex,processTmp_with_hash.protectZone);
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("Role Number #%d {(process=%s),(parent=%s),(grand=%s),(hookType=%d),(action=%d),(redirectIndex=%d),(protectZone=%d)} Loaded Up",_safeCounter_,processTmp_with_hash.process,
+                        processTmp_with_hash.parent,processTmp_with_hash.grandparent,processTmp_with_hash.hookType,processTmp_with_hash.action,processTmp_with_hash.redirectIndex,processTmp_with_hash.protectZone));
 
         bpf_map_update_elem(&prm_map, &_safeCounter_, &processTmp_with_hash, BPF_ANY);
     }
@@ -110,7 +110,7 @@ static int init_uid_base_map(){
         _safeCounter_=i;
         const struct UIDVector *vector = &base.entries[_safeCounter_];
         
-        bpf_printk("UID vector loaded up : %d , severity %d",_safeCounter_,vector->severity);
+        FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA),bpf_printk("UID vector loaded up : %d , severity %d",_safeCounter_,vector->severity));
 
         bpf_map_update_elem(&uid_base_map, &_safeCounter_, vector, BPF_ANY);
     }
@@ -118,7 +118,7 @@ static int init_uid_base_map(){
 }
 
 static int Load_PRM(){
-    bpf_printk("******Preparing PRM******");
+    FULLY_DEBUG(__DEBUG__,(VERBOSE | HIGH | EXTERA | NORMAL),bpf_printk("******Preparing PRM******"));
     __u32 _index_=0;
     struct prm_state startup_state={STARTUP};
     struct prm_state loaded_state={LOADED};

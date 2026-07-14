@@ -106,7 +106,7 @@
 
 #define KERNEL_HOOKS_BYPASS 1
  
-#define __DEBUG__ (NORMAL|LOWER)
+#define __DEBUG__ (LOWER)
 
 
 

@@ -23,7 +23,7 @@ static __u32 filter1(struct hooks_context_t * hook, __u32 input)
     if(isValidUID){
         return 0;
     }else if(isInvalidGID){
-        FULLY_DEBUG(__DEBUG__, (VERBOSE | HIGH | EXTERA | NORMAL | LOWER), bpf_printk("INFO: User (GID=%d, UID=%d) is not in a trusted group", real_gid, real_uid));
+        FULLY_DEBUG(__DEBUG__, (VERBOSE | HIGH | EXTERA | NORMAL), bpf_printk("INFO: User (GID=%d, UID=%d) is not in a trusted group", real_gid, real_uid));
         return 1; // redirect to verifier 
     }
     else return 1; // redirect to verifier
