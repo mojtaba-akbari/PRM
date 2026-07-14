@@ -74,7 +74,7 @@ EOF
 deploy(){
   while ! nc -z localhost 2222; do sleep 1; done
 
-  scp -P 2222 -r -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" $PROJECT_DIR/* rocker@localhost:~/filtering-syscall-framwork/
+  scp -P 2222 -r -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" $PROJECT_DIR/* rocker@localhost:~/PRM/
 }
 
 pid=$(pgrep -fa qemu-system-x86_64)
